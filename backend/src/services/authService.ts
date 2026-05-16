@@ -1,6 +1,7 @@
 import { Role, UserStatus } from "@prisma/client";
 import { prisma } from "../utils/prisma";
 import { generateToken } from "../utils/jwt";
+import { HttpError } from "../utils/httpError";
 import { comparePassword, hashPassword } from "../utils/password";
 
 interface RegisterInput {
@@ -22,6 +23,7 @@ const sanitizeUser = (user: {
   firstName: string;
   lastName: string;
   bio: string | null;
+  avatarUrl: string | null;
   role: Role;
   status: UserStatus;
   rewardKeys: number;
@@ -33,6 +35,7 @@ const sanitizeUser = (user: {
   firstName: user.firstName,
   lastName: user.lastName,
   bio: user.bio,
+  avatarUrl: user.avatarUrl,
   role: user.role,
   status: user.status,
   rewardKeys: user.rewardKeys,
@@ -103,7 +106,7 @@ export const getCurrentUser = async (userId: string) => {
   });
 
   if (!user || user.status !== UserStatus.ACTIVE) {
-    throw new Error("User not found");
+    throw new HttpError(404, "User not found");
   }
 
   return sanitizeUser(user);
