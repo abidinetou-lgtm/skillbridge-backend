@@ -65,7 +65,6 @@ model User {
   firstName    String
   lastName     String
   bio          String?
-  avatarUrl    String?
   role         Role       @default(USER)
   status       UserStatus @default(ACTIVE)
 

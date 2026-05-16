@@ -4,7 +4,6 @@ export interface UpdateProfileInput {
   firstName?: string;
   lastName?: string;
   bio?: string | null;
-  avatarUrl?: string | null;
 }
 
 export interface SkillInput {
@@ -79,8 +78,7 @@ export const parseUpdateProfileInput = (body: unknown): UpdateProfileInput => {
   const input: UpdateProfileInput = {
     firstName,
     lastName,
-    bio: optionalTrimmedString(body.bio, "bio", MAX_LONG_TEXT_LENGTH),
-    avatarUrl: optionalTrimmedString(body.avatarUrl, "avatarUrl", 2048)
+    bio: optionalTrimmedString(body.bio, "bio", MAX_LONG_TEXT_LENGTH)
   };
 
   if (Object.values(input).every((value) => value === undefined)) {
@@ -88,20 +86,6 @@ export const parseUpdateProfileInput = (body: unknown): UpdateProfileInput => {
   }
 
   return input;
-};
-
-export const parseAvatarInput = (body: unknown): { avatarUrl: string | null } => {
-  if (!isObject(body)) {
-    throw new HttpError(400, "Request body must be an object");
-  }
-
-  const avatarUrl = optionalTrimmedString(body.avatarUrl, "avatarUrl", 2048);
-
-  if (avatarUrl === undefined) {
-    throw new HttpError(400, "avatarUrl is required");
-  }
-
-  return { avatarUrl };
 };
 
 export const parseSkillInput = (body: unknown): SkillInput => {

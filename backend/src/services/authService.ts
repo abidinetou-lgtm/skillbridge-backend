@@ -23,7 +23,6 @@ const sanitizeUser = (user: {
   firstName: string;
   lastName: string;
   bio: string | null;
-  avatarUrl: string | null;
   role: Role;
   status: UserStatus;
   rewardKeys: number;
@@ -35,7 +34,6 @@ const sanitizeUser = (user: {
   firstName: user.firstName,
   lastName: user.lastName,
   bio: user.bio,
-  avatarUrl: user.avatarUrl,
   role: user.role,
   status: user.status,
   rewardKeys: user.rewardKeys,

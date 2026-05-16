@@ -44,7 +44,6 @@ const currentUserSelect = {
   firstName: true,
   lastName: true,
   bio: true,
-  avatarUrl: true,
   role: true,
   status: true,
   rewardKeys: true,
@@ -66,7 +65,6 @@ const publicUserSelect = {
   firstName: true,
   lastName: true,
   bio: true,
-  avatarUrl: true,
   teachingSkills: {
     select: teachingSkillSelect,
     orderBy: { createdAt: "desc" }
@@ -119,7 +117,6 @@ const getOrCreateSkill = async (input: SkillInput | LearningGoalInput) => {
     update: {},
     create: {
       name: input.name,
-      description: input.description ?? undefined,
       category: "category" in input ? input.category ?? undefined : undefined
     }
   });
@@ -129,22 +126,6 @@ const getOrCreateSkill = async (input: SkillInput | LearningGoalInput) => {
   }
 
   return skill;
-};
-
-export const getUserProfile = async (userId: string) => {
-  const user = await prisma.user.findFirst({
-    where: {
-      id: userId,
-      status: UserStatus.ACTIVE
-    },
-    select: currentUserSelect
-  });
-
-  if (!user) {
-    throw new HttpError(404, "User not found");
-  }
-
-  return user;
 };
 
 export const updateUserProfile = async (userId: string, input: UpdateProfileInput) => {
@@ -164,19 +145,12 @@ export const updateUserProfile = async (userId: string, input: UpdateProfileInpu
     data.bio = input.bio;
   }
 
-  if (input.avatarUrl !== undefined) {
-    data.avatarUrl = input.avatarUrl;
-  }
-
   return prisma.user.update({
     where: { id: userId },
     data,
     select: currentUserSelect
   });
 };
-
-export const updateUserAvatar = async (userId: string, avatarUrl: string | null) =>
-  updateUserProfile(userId, { avatarUrl });
 
 export const addUserSkill = async (userId: string, input: SkillInput) => {
   await ensureActiveUser(userId);
@@ -285,43 +259,77 @@ export const searchUsers = async (input: {
   }
 
   const limit = Math.min(Math.max(input.limit ?? 20, 1), 50);
+  const filters: Prisma.UserWhereInput[] = [];
+
+  if (query) {
+    // A general search term should scan public profile text and related skill names.
+    filters.push(
+      { firstName: { contains: query, mode: "insensitive" } },
+      { lastName: { contains: query, mode: "insensitive" } },
+      { bio: { contains: query, mode: "insensitive" } },
+      {
+        teachingSkills: {
+          some: {
+            skill: {
+              is: {
+                name: { contains: query, mode: "insensitive" },
+                isActive: true
+              }
+            }
+          }
+        }
+      },
+      {
+        learningGoals: {
+          some: {
+            isActive: true,
+            skill: {
+              is: {
+                name: { contains: query, mode: "insensitive" },
+                isActive: true
+              }
+            }
+          }
+        }
+      }
+    );
+  }
+
+  if (skill) {
+    // The dedicated skill filter searches only skill relations, not profile text.
+    filters.push(
+      {
+        teachingSkills: {
+          some: {
+            skill: {
+              is: {
+                name: { contains: skill, mode: "insensitive" },
+                isActive: true
+              }
+            }
+          }
+        }
+      },
+      {
+        learningGoals: {
+          some: {
+            isActive: true,
+            skill: {
+              is: {
+                name: { contains: skill, mode: "insensitive" },
+                isActive: true
+              }
+            }
+          }
+        }
+      }
+    );
+  }
 
   return prisma.user.findMany({
     where: {
       status: UserStatus.ACTIVE,
-      OR: [
-        ...(query
-          ? [
-              { firstName: { contains: query, mode: "insensitive" as const } },
-              { lastName: { contains: query, mode: "insensitive" as const } }
-            ]
-          : []),
-        ...(skill
-          ? [
-              {
-                teachingSkills: {
-                  some: {
-                    skill: {
-                      name: { contains: skill, mode: "insensitive" as const },
-                      isActive: true
-                    }
-                  }
-                }
-              },
-              {
-                learningGoals: {
-                  some: {
-                    isActive: true,
-                    skill: {
-                      name: { contains: skill, mode: "insensitive" as const },
-                      isActive: true
-                    }
-                  }
-                }
-              }
-            ]
-          : [])
-      ]
+      OR: filters
     },
     select: publicUserSelect,
     orderBy: [{ firstName: "asc" }, { lastName: "asc" }],

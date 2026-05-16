@@ -2,16 +2,13 @@ import { NextFunction, Request, Response } from "express";
 import {
   addLearningGoal,
   addUserSkill,
-  getUserProfile,
   removeLearningGoal,
   removeUserSkill,
   searchUsers,
-  updateUserAvatar,
   updateUserProfile
 } from "../services/userService";
 import { HttpError } from "../utils/httpError";
 import {
-  parseAvatarInput,
   parseLearningGoalInput,
   parseSkillInput,
   parseUpdateProfileInput
@@ -35,21 +32,6 @@ const getRouteId = (req: Request): string => {
   return id;
 };
 
-export const getMe = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
-    const userId = getAuthenticatedUserId(req);
-    const user = await getUserProfile(userId);
-
-    res.status(200).json({ user });
-  } catch (error) {
-    next(error);
-  }
-};
-
 export const updateMe = async (
   req: Request,
   res: Response,
@@ -59,22 +41,6 @@ export const updateMe = async (
     const userId = getAuthenticatedUserId(req);
     const input = parseUpdateProfileInput(req.body);
     const user = await updateUserProfile(userId, input);
-
-    res.status(200).json({ user });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const updateAvatar = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
-    const userId = getAuthenticatedUserId(req);
-    const { avatarUrl } = parseAvatarInput(req.body);
-    const user = await updateUserAvatar(userId, avatarUrl);
 
     res.status(200).json({ user });
   } catch (error) {
