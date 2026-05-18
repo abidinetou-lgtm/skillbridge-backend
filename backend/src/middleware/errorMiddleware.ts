@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from "express";
+import { HttpError } from "../utils/httpError";
 
 export const errorMiddleware = (
   err: Error,
@@ -9,10 +10,16 @@ export const errorMiddleware = (
   // Log the full error for developers, but send clients a generic message.
   console.error(err);
 
+  if (err instanceof HttpError) {
+    res.status(err.statusCode).json({
+      message: err.message
+    });
+    return;
+  }
+
   if (
     err.message === "Email is already registered" ||
-    err.message === "Invalid email or password" ||
-    err.message === "User not found"
+    err.message === "Invalid email or password"
   ) {
     const statusCode = err.message === "Email is already registered" ? 409 : 401;
 
