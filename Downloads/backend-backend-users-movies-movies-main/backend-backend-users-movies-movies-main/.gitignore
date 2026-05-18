@@ -1,7 +1,0 @@
-node_modules/
-.env
-.prisma/
-dist/
-coverage/
-*.log
-.DS_Store
