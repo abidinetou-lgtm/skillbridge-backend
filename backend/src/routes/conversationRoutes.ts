@@ -1,9 +1,11 @@
 import { Router } from "express";
-import { conversationController } from "../controllers/conversationController";
+import { createConversationController, readConversationController, createMessageController } from "../controllers/conversationController";
 import { authenticate } from "../middleware/authMiddleware";
 
 const router = Router();
 
-router.get("/", authenticate, conversationController);
+router.get("/", authenticate, createConversationController);
+router.get("/:id", authenticate, readConversationController);
+router.post("/:id/messages", authenticate, createMessageController);
 
 export default router;
