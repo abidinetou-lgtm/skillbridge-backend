@@ -2,25 +2,24 @@ import cors = require("cors");
 import express = require("express");
 import { errorMiddleware } from "./middleware/errorMiddleware";
 import routes from "./routes";
-import { env } from "./utils/env";
 
 const app = express();
 
-// CORS controls which frontend applications are allowed to call this API.
+// Allow the React frontend running on Vite to call the backend API.
 app.use(
   cors({
-    origin: env.corsOrigin,
+    origin: "http://localhost:5173",
     credentials: true
   })
 );
 
-// express.json() allows Express to read JSON request bodies from clients.
+// Allows Express to read JSON request bodies.
 app.use(express.json());
 
-// Keep route registration in one place so new feature routes are easy to add.
+// Centralized API routes.
 app.use(routes);
 
-// Error middleware must be registered after routes so it can catch route errors.
+// Global error handler.
 app.use(errorMiddleware);
 
 export default app;
