@@ -1,10 +1,14 @@
 import { Request, Response, NextFunction } from "express";
-import { getAuthenticatedUserId } from "../controllers/userController";
+import { HttpError } from "../utils/httpError";
 import {createConversationService,
         readConversationService,
         createMessageService 
     } from "../services/conversationService";
 
+const getAuthenticatedUserId = (req: any): string => {
+  if (!req.user) throw new HttpError(401, "Authentication required");
+  return req.user.id;
+};
 
 export const createConversationController = async (
     req: Request,
