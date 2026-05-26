@@ -53,9 +53,11 @@ enum RewardTransactionType {
 // Teaching sessions track the real learning activity between matched users.
 enum TeachingSessionStatus {
   SCHEDULED
+  ACTIVE
   COMPLETED
   CANCELLED
   NO_SHOW
+  PENDING_CONFIRMATION
 }
 
 model User {
@@ -69,7 +71,7 @@ model User {
   status       UserStatus @default(ACTIVE)
 
   // Reward keys are stored on the user for fast balance reads.
-  rewardKeys Int @default(0)
+  credits Int @default(20)
 
   // Skills this user can teach.
   teachingSkills UserSkill[]
@@ -195,7 +197,7 @@ model Conversation {
   status       ConversationStatus @default(ACTIVE)
 
   // Conversations are tied to a match, which restricts chat to matched users.
-  match      Match     @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  match   Match?  @relation(fields: [matchId], references: [id], onDelete: SetNull)
   firstUser  User      @relation("ConversationFirstUser", fields: [firstUserId], references: [id], onDelete: Cascade)
   secondUser User      @relation("ConversationSecondUser", fields: [secondUserId], references: [id], onDelete: Cascade)
   messages   Message[]
@@ -249,18 +251,24 @@ model RewardTransaction {
 }
 
 model TeachingSession {
-  id        String                @id @default(uuid())
-  matchId   String
-  teacherId String
-  learnerId String
-  skillId   String?
-  status    TeachingSessionStatus @default(SCHEDULED)
-  startsAt  DateTime
-  endsAt    DateTime?
-  notes     String?
+  id               String                @id @default(uuid())
+  matchId          String?
+  teacherId        String
+  learnerId        String
+  skillId          String?
+  status           TeachingSessionStatus @default(SCHEDULED)
+  title            String
+  jitsiRoomId      String                @unique
+  startsAt         DateTime
+  endsAt           DateTime?
+  actualStartedAt  DateTime?
+  actualEndedAt    DateTime?
+  creditsReserved  Int                   @default(0)
+  creditsConsumed  Int                   @default(0)
+  notes            String?
 
   // Sessions connect the accepted match, teacher, learner, and optional skill.
-  match   Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  match   Match?  @relation(fields: [matchId], references: [id], onDelete: SetNull)
   teacher User   @relation("SessionTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
   learner User   @relation("SessionLearner", fields: [learnerId], references: [id], onDelete: Cascade)
   skill   Skill? @relation(fields: [skillId], references: [id], onDelete: SetNull)
