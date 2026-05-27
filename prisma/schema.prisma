@@ -71,7 +71,7 @@ model User {
   status       UserStatus @default(ACTIVE)
 
   // Credits are stored on the user for fast balance reads.
-  credits Int @default(20)
+ credits Int @default(120)
 
   // Skills this user can teach.
   teachingSkills UserSkill[]

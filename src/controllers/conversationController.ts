@@ -17,8 +17,8 @@ export const createConversationController = async (
 ) => {
     try {
         const userId = getAuthenticatedUserId(req);
-        const data = await createConversationService(userId);
-        res.status(200).json(data);
+        const conversations = await createConversationService(userId);
+        res.status(200).json({ conversations });
     } catch (error) {
         next(error);
     }
@@ -32,8 +32,8 @@ export const readConversationController = async (
     try {
         const conversationId = req.params.id as string;
         const userId = getAuthenticatedUserId(req)
-        const data = await readConversationService (conversationId, userId);
-        res.status(200).json(data);
+        const messages = await readConversationService(conversationId, userId);
+        res.status(200).json({ messages });
     } catch (error) {
         next(error);
     }

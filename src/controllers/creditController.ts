@@ -1,8 +1,11 @@
 import { Request, Response, NextFunction } from "express";
 import { HttpError } from "../utils/httpError";
-import { get } from "node:http";
 import { prisma } from "../utils/prisma";
-import { getAuthenticatedUserId } from "./userController";
+
+const getAuthenticatedUserId = (req: Request): string => {
+  if (!req.user) throw new HttpError(401, "Authentication required");
+  return req.user.id;
+};
 
 export const getCreditController = async (
     req: Request,

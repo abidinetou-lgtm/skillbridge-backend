@@ -72,12 +72,14 @@ export const joinSessionService = async (sessionId: string, userId: string) => {
     if (session.teacherId !== userId && session.learnerId !== userId) {
         throw new HttpError(403, "User is not part of this session");
     }
-    if (session.status !== "SCHEDULED") {
-        throw new HttpError(400, "Session is not scheduled");
+    if (session.status === "COMPLETED" || session.status === "CANCELLED") {
+        throw new HttpError(400, "Session has already ended");
     }
-    await prisma.teachingSession.update({
-        where: { id: sessionId },
-        data: { status: "ACTIVE", actualStartedAt: new Date() }
-    });
+    if (session.status === "SCHEDULED") {
+        await prisma.teachingSession.update({
+            where: { id: sessionId },
+            data: { status: "ACTIVE", actualStartedAt: new Date() }
+        });
+    }
     return session.jitsiRoomId;
 };
