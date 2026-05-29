@@ -14,7 +14,7 @@ const sanitizeUser = (user) => ({
     bio: user.bio,
     role: user.role,
     status: user.status,
-    rewardKeys: user.rewardKeys,
+    credits: user.credits,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt
 });

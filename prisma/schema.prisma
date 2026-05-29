@@ -191,7 +191,7 @@ model Match {
 
 model Conversation {
   id           String             @id @default(uuid())
-  matchId      String             @unique
+  matchId      String?            @unique
   firstUserId  String
   secondUserId String
   status       ConversationStatus @default(ACTIVE)

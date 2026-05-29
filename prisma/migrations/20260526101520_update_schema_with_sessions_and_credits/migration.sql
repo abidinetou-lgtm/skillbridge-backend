@@ -25,6 +25,9 @@ ALTER TABLE "Conversation" DROP CONSTRAINT "Conversation_matchId_fkey";
 ALTER TABLE "TeachingSession" DROP CONSTRAINT "TeachingSession_matchId_fkey";
 
 -- AlterTable
+ALTER TABLE "Conversation" ALTER COLUMN "matchId" DROP NOT NULL;
+
+-- AlterTable
 ALTER TABLE "Message" ADD COLUMN     "isSystem" BOOLEAN NOT NULL DEFAULT false;
 
 -- AlterTable

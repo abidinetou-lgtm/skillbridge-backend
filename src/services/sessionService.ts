@@ -1,6 +1,6 @@
 import { prisma } from "../utils/prisma";
 import { HttpError } from "../utils/httpError";
-import { v4 as uuid } from "uuid";
+import { randomUUID } from "crypto";
 import { TeachingSessionStatus } from "@prisma/client";
 
 export const createSessionService = async (teacherId: string, learnerId: string, title: string, estimatedDuration: number, scheduledAt: Date) => {
@@ -14,7 +14,7 @@ export const createSessionService = async (teacherId: string, learnerId: string,
     if (learner.credits < estimatedDuration) {
         throw new HttpError(400, "Learner does not have enough credits");
     }
-    const jitsiRoomId = `skillbridge-${uuid()}`;
+    const jitsiRoomId = `skillbridge-${randomUUID()}`;
     await prisma.user.update({
         where: { id: learnerId },
         data: { credits: { decrement: estimatedDuration } } });

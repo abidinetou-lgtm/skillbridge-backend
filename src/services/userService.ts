@@ -46,7 +46,7 @@ const currentUserSelect = {
   bio: true,
   role: true,
   status: true,
-  rewardKeys: true,
+  credits: true,
   teachingSkills: {
     select: teachingSkillSelect,
     orderBy: { createdAt: "desc" }
