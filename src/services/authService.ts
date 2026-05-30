@@ -32,19 +32,11 @@ const sanitizeUser = (user: {
   id:        user.id,
   email:     user.email,
   firstName: user.firstName,
-<<<<<<< HEAD
   lastName:  user.lastName,
   bio:       user.bio,
   role:      user.role,
   status:    user.status,
   credits:   user.credits,
-=======
-  lastName: user.lastName,
-  bio: user.bio,
-  role: user.role,
-  status: user.status,
-  credits: user.credits,
->>>>>>> 80930ca66ab113fb77ff88804c948386cadcfe12
   createdAt: user.createdAt,
   updatedAt: user.updatedAt,
 });

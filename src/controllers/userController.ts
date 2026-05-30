@@ -17,16 +17,6 @@ import {
   parseUpdateProfileInput
 } from "../utils/profileValidation";
 
-<<<<<<< HEAD
-=======
-export const getAuthenticatedUserId = (req: Request): string => {
-  if (!req.user) {
-    throw new HttpError(401, "Authentication required");
-  }
-
-  return req.user.id;
-};
->>>>>>> 80930ca66ab113fb77ff88804c948386cadcfe12
 
 const getRouteId = (req: Request): string => {
   const { id } = req.params;

@@ -1,6 +1,5 @@
 import { prisma } from "../utils/prisma";
 import { HttpError } from "../utils/httpError";
-<<<<<<< HEAD
 import { v4 as uuid } from "uuid";
 
 export const createSessionService = async (
@@ -15,38 +14,6 @@ export const createSessionService = async (
     where: { id: learnerId },
     select: { credits: true },
   });
-=======
-import { randomUUID } from "crypto";
-import { TeachingSessionStatus } from "@prisma/client";
-
-export const createSessionService = async (teacherId: string, learnerId: string, title: string, estimatedDuration: number, scheduledAt: Date) => {
-   const learner = await prisma.user.findUnique({
-        where: { id: learnerId },
-        select: { credits: true }
-    });
-    if (!learner) {
-        throw new HttpError(404, "Learner not found");
-    }
-    if (learner.credits < estimatedDuration) {
-        throw new HttpError(400, "Learner does not have enough credits");
-    }
-    const jitsiRoomId = `skillbridge-${randomUUID()}`;
-    await prisma.user.update({
-        where: { id: learnerId },
-        data: { credits: { decrement: estimatedDuration } } });
-    const session = await prisma.teachingSession.create({
-        data: {
-            jitsiRoomId,
-            teacherId,
-            learnerId,
-            title,
-            creditsReserved: estimatedDuration,
-            startsAt: scheduledAt
-        }
-    });
-    return session;
-};
->>>>>>> 80930ca66ab113fb77ff88804c948386cadcfe12
 
   if (!learner) throw new HttpError(404, "Learner not found");
   if (learner.credits < estimatedDuration) {
