@@ -10,19 +10,13 @@ import {
   updateUserProfile
 } from "../services/userService";
 import { HttpError } from "../utils/httpError";
+import { getAuthenticatedUserId } from "../utils/requestHelpers";
 import {
   parseLearningGoalInput,
   parseSkillInput,
   parseUpdateProfileInput
 } from "../utils/profileValidation";
 
-const getAuthenticatedUserId = (req: Request): string => {
-  if (!req.user) {
-    throw new HttpError(401, "Authentication required");
-  }
-
-  return req.user.id;
-};
 
 const getRouteId = (req: Request): string => {
   const { id } = req.params;

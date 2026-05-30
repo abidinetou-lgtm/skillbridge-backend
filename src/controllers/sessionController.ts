@@ -1,16 +1,26 @@
 import { Request, Response, NextFunction } from "express";
 import { HttpError } from "../utils/httpError";
 import { prisma } from "../utils/prisma";
+import { getAuthenticatedUserId } from "../utils/requestHelpers";
 import {
   createSessionService,
   endSessionService,
   joinSessionService,
 } from "../services/sessionService";
 
-const getAuthenticatedUserId = (req: Request): string => {
-  if (!req.user) throw new HttpError(401, "Authentication required");
-  return req.user.id;
-};
+const SESSION_SELECT = {
+  id: true,
+  status: true,
+  startsAt: true,
+  title: true,
+  jitsiRoomId: true,
+  creditsReserved: true,
+  creditsConsumed: true,
+  actualStartedAt: true,
+  actualEndedAt: true,
+  teacher: { select: { id: true, firstName: true, lastName: true } },
+  learner: { select: { id: true, firstName: true, lastName: true } },
+} as const;
 
 // GET /sessions/mine
 export const getSessionsController = async (
@@ -24,19 +34,7 @@ export const getSessionsController = async (
       where: {
         OR: [{ teacherId: userId }, { learnerId: userId }],
       },
-      select: {
-        id:           true,
-        status:       true,
-        startsAt:     true,
-        title:        true,
-        jitsiRoomId:  true,
-        creditsReserved: true,
-        creditsConsumed: true,
-        actualStartedAt: true,
-        actualEndedAt:   true,
-        teacher: { select: { id: true, firstName: true, lastName: true } },
-        learner: { select: { id: true, firstName: true, lastName: true } },
-      },
+      select: SESSION_SELECT,
       orderBy: { startsAt: "desc" },
     });
     res.status(200).json({ sessions });
@@ -52,7 +50,7 @@ export const getSessionController = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId    = getAuthenticatedUserId(req);
+    const userId = getAuthenticatedUserId(req);
     const sessionId = req.params.id as string;
 
     const session = await prisma.teachingSession.findFirst({
@@ -60,19 +58,7 @@ export const getSessionController = async (
         id: sessionId,
         OR: [{ teacherId: userId }, { learnerId: userId }],
       },
-      select: {
-        id:           true,
-        status:       true,
-        startsAt:     true,
-        title:        true,
-        jitsiRoomId:  true,
-        creditsReserved: true,
-        creditsConsumed: true,
-        actualStartedAt: true,
-        actualEndedAt:   true,
-        teacher: { select: { id: true, firstName: true, lastName: true } },
-        learner: { select: { id: true, firstName: true, lastName: true } },
-      },
+      select: SESSION_SELECT,
     });
 
     if (!session) throw new HttpError(404, "Session not found");
@@ -122,8 +108,18 @@ export const endSessionController = async (
 ): Promise<void> => {
   try {
     const sessionId = req.params.id as string;
-    const userId    = getAuthenticatedUserId(req);
-    await endSessionService(sessionId, userId);
+    const userId = getAuthenticatedUserId(req);
+    const { durationSeconds } = req.body;
+
+    if (
+      durationSeconds === undefined ||
+      typeof durationSeconds !== "number" ||
+      durationSeconds < 0
+    ) {
+      throw new HttpError(400, "durationSeconds (non-negative number) is required");
+    }
+
+    await endSessionService(sessionId, userId, durationSeconds);
     res.status(200).json({ message: "Session ended successfully" });
   } catch (error) {
     next(error);
@@ -138,7 +134,7 @@ export const joinSessionController = async (
 ): Promise<void> => {
   try {
     const sessionId = req.params.id as string;
-    const userId    = getAuthenticatedUserId(req);
+    const userId = getAuthenticatedUserId(req);
     const jitsiRoomId = await joinSessionService(sessionId, userId);
     res.status(200).json({
       jitsiRoomId,

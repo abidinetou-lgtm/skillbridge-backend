@@ -10,10 +10,10 @@ import {
 
 const router = Router();
 
-router.get("/mine",       authenticate, getSessionsController);
-router.get("/:id",        authenticate, getSessionController);
-router.post("/",          authenticate, createSessionController);
-router.post("/:id/end",   authenticate, endSessionController);
-router.post("/:id/join",  authenticate, joinSessionController);
+router.get("/mine",      authenticate, getSessionsController);
+router.get("/:id",       authenticate, getSessionController);
+router.post("/",         authenticate, createSessionController);
+router.post("/:id/end",  authenticate, endSessionController);
+router.post("/:id/join", authenticate, joinSessionController);
 
 export default router;
