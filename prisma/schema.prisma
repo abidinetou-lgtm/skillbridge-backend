@@ -6,20 +6,17 @@ datasource db {
   provider = "postgresql"
 }
 
-// Application roles. ADMIN users can moderate content and support users.
 enum Role {
   USER
   ADMIN
 }
 
-// Keeps user accounts easy to moderate without deleting their data immediately.
 enum UserStatus {
   ACTIVE
   SUSPENDED
   DELETED
 }
 
-// A match connects two users who may teach and learn from each other.
 enum MatchStatus {
   PENDING
   ACCEPTED
@@ -28,21 +25,18 @@ enum MatchStatus {
   COMPLETED
 }
 
-// Conversations are restricted to users who are allowed to communicate.
 enum ConversationStatus {
   ACTIVE
   ARCHIVED
   BLOCKED
 }
 
-// Message status helps build read receipts and moderation tools later.
 enum MessageStatus {
   SENT
   READ
   DELETED
 }
 
-// Reward keys are earned and spent through tracked transactions.
 enum RewardTransactionType {
   EARNED
   SPENT
@@ -50,14 +44,13 @@ enum RewardTransactionType {
   REFUNDED
 }
 
-// Teaching sessions track the real learning activity between matched users.
 enum TeachingSessionStatus {
   SCHEDULED
-  ACTIVE              // Session is currently in progress
+  ACTIVE
   COMPLETED
   CANCELLED
   NO_SHOW
-  PENDING_CONFIRMATION // Session ended, waiting for credit transfer confirmation
+  PENDING_CONFIRMATION
 }
 
 model User {
@@ -67,23 +60,19 @@ model User {
   firstName    String
   lastName     String
   bio          String?
+  avatarUrl    String?
+  availability String?    // JSON: { "Lundi_Matin": true, "Mardi_Soir": true, ... }
   role         Role       @default(USER)
   status       UserStatus @default(ACTIVE)
 
-  // Credits are stored on the user for fast balance reads.
- credits Int @default(120)
+  credits Int @default(120)
 
-  // Skills this user can teach.
   teachingSkills UserSkill[]
+  learningGoals  LearningGoal[]
 
-  // Skills this user wants to learn.
-  learningGoals LearningGoal[]
-
-  // Matches are split into requester/receiver so Prisma can model both sides clearly.
   requestedMatches Match[] @relation("MatchRequester")
   receivedMatches  Match[] @relation("MatchReceiver")
 
-  // Conversation ownership is limited to two participants for a restricted chat system.
   conversationsAsFirstUser  Conversation[] @relation("ConversationFirstUser")
   conversationsAsSecondUser Conversation[] @relation("ConversationSecondUser")
   messages                  Message[]
@@ -92,7 +81,6 @@ model User {
   teachingSessionsAsTeacher TeachingSession[]   @relation("SessionTeacher")
   teachingSessionsAsLearner TeachingSession[]   @relation("SessionLearner")
 
-  // Admin support fields make it possible to track who handled a case.
   adminSupportCreated RewardTransaction[] @relation("AdminRewardTransactions")
 
   createdAt DateTime @default(now())
@@ -110,7 +98,6 @@ model Skill {
   category    String?
   isActive    Boolean @default(true)
 
-  // A skill can be taught by many users and requested in many learning goals.
   teachers      UserSkill[]
   learningGoals LearningGoal[]
   matches       Match[]
@@ -131,14 +118,12 @@ model UserSkill {
   yearsOfExperience Int?
   isVerified        Boolean @default(false)
 
-  // Delete a user's teaching skills when the user or skill is removed.
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // A user should only list the same teachable skill once.
   @@unique([userId, skillId])
   @@index([skillId])
   @@index([isVerified])
@@ -152,7 +137,6 @@ model LearningGoal {
   targetLevel String?
   isActive    Boolean @default(true)
 
-  // Delete learning goals when the user or skill is removed.
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
 
@@ -182,7 +166,6 @@ model Match {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Prevent duplicate pending/active pairs for the same skill direction.
   @@unique([requesterId, receiverId, skillId])
   @@index([receiverId, status])
   @@index([requesterId, status])
@@ -191,12 +174,11 @@ model Match {
 
 model Conversation {
   id           String             @id @default(uuid())
-  matchId      String?            @unique
+  matchId      String             @unique
   firstUserId  String
   secondUserId String
   status       ConversationStatus @default(ACTIVE)
 
-  // Conversations are tied to a match, which restricts chat to matched users.
   match      Match?    @relation(fields: [matchId], references: [id], onDelete: SetNull)
   firstUser  User      @relation("ConversationFirstUser", fields: [firstUserId], references: [id], onDelete: Cascade)
   secondUser User      @relation("ConversationSecondUser", fields: [secondUserId], references: [id], onDelete: Cascade)
@@ -217,9 +199,8 @@ model Message {
   body           String
   status         MessageStatus @default(SENT)
   readAt         DateTime?
-  isSystem       Boolean       @default(false) // True for auto-generated system messages
+  isSystem       Boolean       @default(false)
 
-  // Delete messages when a conversation is removed.
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
 
@@ -239,7 +220,6 @@ model RewardTransaction {
   type        RewardTransactionType
   description String?
 
-  // User receives or spends reward keys. Admin is optional for system-generated transactions.
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   admin User? @relation("AdminRewardTransactions", fields: [adminId], references: [id], onDelete: SetNull)
 
@@ -258,18 +238,17 @@ model TeachingSession {
   learnerId        String
   skillId          String?
   status           TeachingSessionStatus @default(SCHEDULED)
-  title            String                // Title of the session as shown to participants
-  description      String?               // Optional description of what will be covered
-  jitsiRoomId      String                @unique // Unique Jitsi room ID generated server-side
+  title            String
+  description      String?
+  jitsiRoomId      String                @unique
   startsAt         DateTime
   endsAt           DateTime?
-  actualStartedAt  DateTime?             // Timestamp when first participant joined
-  actualEndedAt    DateTime?             // Timestamp when session was ended
-  creditsReserved  Int                   @default(0) // Credits locked at session creation
-  creditsConsumed  Int                   @default(0) // Credits actually deducted after session
+  actualStartedAt  DateTime?
+  actualEndedAt    DateTime?
+  creditsReserved  Int                   @default(0)
+  creditsConsumed  Int                   @default(0)
   notes            String?
 
-  // Sessions connect the accepted match, teacher, learner, and optional skill.
   match   Match?  @relation(fields: [matchId], references: [id], onDelete: SetNull)
   teacher User    @relation("SessionTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
   learner User    @relation("SessionLearner", fields: [learnerId], references: [id], onDelete: Cascade)
