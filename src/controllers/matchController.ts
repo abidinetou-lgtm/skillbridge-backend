@@ -7,14 +7,8 @@ import {
   updateMatchStatus
 } from "../services/matchService";
 import { HttpError } from "../utils/httpError";
+import { getAuthenticatedUserId } from "../utils/requestHelpers";
 
-const getAuthenticatedUserId = (req: Request): string => {
-  if (!req.user) {
-    throw new HttpError(401, "Authentication required");
-  }
-
-  return req.user.id;
-};
 
 export const suggestions = async (
   req: Request,
@@ -26,7 +20,7 @@ export const suggestions = async (
     const matches = await getMatchSuggestions(userId);
 
     // Return a simple list for the MVP. More match metadata can be added later.
-    res.status(200).json({ matches });
+    res.status(200).json({ suggestions: matches });
   } catch (error) {
     next(error);
   }

@@ -1,31 +1,25 @@
 import { Request, Response, NextFunction } from "express";
 import { HttpError } from "../utils/httpError";
-import { get } from "node:http";
 import { prisma } from "../utils/prisma";
-import { getAuthenticatedUserId } from "./userController";
+import { getAuthenticatedUserId } from "../utils/requestHelpers";
 
 export const getCreditController = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-) => {
-try {
-    // 1 — récupérer userId
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
     const userId = getAuthenticatedUserId(req);
 
-    // 2 — interroger Prisma avec userId
     const user = await prisma.user.findUnique({
-        where: { id: userId },   // ← userId ici, pas req.user?.id
-        select: { credits: true }
+      where: { id: userId },
+      select: { credits: true },
     });
 
-    // 3 — vérifier que l'user existe
     if (!user) throw new HttpError(404, "User not found");
 
-    // 4 — retourner les crédits
     res.status(200).json({ credits: user.credits });
-
-} catch (error) {
+  } catch (error) {
     next(error);
-}
+  }
 };
