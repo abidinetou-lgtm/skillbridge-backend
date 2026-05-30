@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.search = exports.deleteLearningGoal = exports.createLearningGoal = exports.deleteSkill = exports.createSkill = exports.getById = exports.updateMe = exports.getMe = void 0;
+exports.search = exports.deleteLearningGoal = exports.createLearningGoal = exports.deleteSkill = exports.createSkill = exports.getById = exports.updateMe = exports.getMe = exports.getAuthenticatedUserId = void 0;
 const userService_1 = require("../services/userService");
 const httpError_1 = require("../utils/httpError");
 const profileValidation_1 = require("../utils/profileValidation");
@@ -10,6 +10,7 @@ const getAuthenticatedUserId = (req) => {
     }
     return req.user.id;
 };
+exports.getAuthenticatedUserId = getAuthenticatedUserId;
 const getRouteId = (req) => {
     const { id } = req.params;
     if (typeof id !== "string" || id.trim().length === 0) {
@@ -19,7 +20,7 @@ const getRouteId = (req) => {
 };
 const getMe = async (req, res, next) => {
     try {
-        const userId = getAuthenticatedUserId(req);
+        const userId = (0, exports.getAuthenticatedUserId)(req);
         const user = await (0, userService_1.getCurrentUserProfile)(userId);
         res.status(200).json({ user });
     }
@@ -30,7 +31,7 @@ const getMe = async (req, res, next) => {
 exports.getMe = getMe;
 const updateMe = async (req, res, next) => {
     try {
-        const userId = getAuthenticatedUserId(req);
+        const userId = (0, exports.getAuthenticatedUserId)(req);
         const input = (0, profileValidation_1.parseUpdateProfileInput)(req.body);
         const user = await (0, userService_1.updateUserProfile)(userId, input);
         res.status(200).json({ user });
@@ -52,7 +53,7 @@ const getById = async (req, res, next) => {
 exports.getById = getById;
 const createSkill = async (req, res, next) => {
     try {
-        const userId = getAuthenticatedUserId(req);
+        const userId = (0, exports.getAuthenticatedUserId)(req);
         const input = (0, profileValidation_1.parseSkillInput)(req.body);
         const userSkill = await (0, userService_1.addUserSkill)(userId, input);
         res.status(201).json({ skill: userSkill });
@@ -64,7 +65,7 @@ const createSkill = async (req, res, next) => {
 exports.createSkill = createSkill;
 const deleteSkill = async (req, res, next) => {
     try {
-        const userId = getAuthenticatedUserId(req);
+        const userId = (0, exports.getAuthenticatedUserId)(req);
         // The id here is the UserSkill row id, so users can only delete their own join record.
         await (0, userService_1.removeUserSkill)(userId, getRouteId(req));
         res.status(204).send();
@@ -76,7 +77,7 @@ const deleteSkill = async (req, res, next) => {
 exports.deleteSkill = deleteSkill;
 const createLearningGoal = async (req, res, next) => {
     try {
-        const userId = getAuthenticatedUserId(req);
+        const userId = (0, exports.getAuthenticatedUserId)(req);
         const input = (0, profileValidation_1.parseLearningGoalInput)(req.body);
         const learningGoal = await (0, userService_1.addLearningGoal)(userId, input);
         res.status(201).json({ learningGoal });
@@ -88,7 +89,7 @@ const createLearningGoal = async (req, res, next) => {
 exports.createLearningGoal = createLearningGoal;
 const deleteLearningGoal = async (req, res, next) => {
     try {
-        const userId = getAuthenticatedUserId(req);
+        const userId = (0, exports.getAuthenticatedUserId)(req);
         await (0, userService_1.removeLearningGoal)(userId, getRouteId(req));
         res.status(204).send();
     }
