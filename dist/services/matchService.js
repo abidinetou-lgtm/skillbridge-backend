@@ -26,6 +26,13 @@ const matchedUserSelect = {
     bio: true,
     teachingSkills: {
         select: matchingTeachingSkillSelect
+    },
+    learningGoals: {
+        where: { isActive: true },
+        select: {
+            id: true,
+            skill: { select: skillSelect }
+        }
     }
 };
 const matchUserSelect = {

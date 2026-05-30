@@ -15,7 +15,7 @@ const suggestions = async (req, res, next) => {
         const userId = getAuthenticatedUserId(req);
         const matches = await (0, matchService_1.getMatchSuggestions)(userId);
         // Return a simple list for the MVP. More match metadata can be added later.
-        res.status(200).json({ matches });
+        res.status(200).json({ suggestions: matches });
     }
     catch (error) {
         next(error);
