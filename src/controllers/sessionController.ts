@@ -138,7 +138,7 @@ export const joinSessionController = async (
     const jitsiRoomId = await joinSessionService(sessionId, userId);
     res.status(200).json({
       jitsiRoomId,
-      jitsiUrl: `https://meet.jit.si/${jitsiRoomId}`,
+      jitsiUrl: `https://meet.jit.si/${jitsiRoomId}#config.prejoinPageEnabled=false`,
     });
   } catch (error) {
     next(error);
