@@ -24,6 +24,8 @@ const matchedUserSelect = {
   firstName: true,
   lastName: true,
   bio: true,
+  avatarUrl: true,
+  availability: true,
   teachingSkills: {
     select: matchingTeachingSkillSelect
   },
@@ -41,6 +43,8 @@ const matchUserSelect = {
   firstName: true,
   lastName: true,
   bio: true,
+  avatarUrl: true,
+  availability: true,
   teachingSkills: {
     select: matchingTeachingSkillSelect,
     orderBy: {
