@@ -9,6 +9,7 @@ export interface JwtPayload {
 
 export const generateToken = (payload: JwtPayload): string => {
   const options: jwt.SignOptions = {
+    algorithm: "HS256",
     expiresIn: env.jwtExpiresIn as jwt.SignOptions["expiresIn"]
   };
 
@@ -18,5 +19,7 @@ export const generateToken = (payload: JwtPayload): string => {
 
 export const verifyToken = (token: string): JwtPayload => {
   // jsonwebtoken throws when the token is expired, malformed, or signed with the wrong secret.
-  return jwt.verify(token, env.jwtSecret) as JwtPayload;
+  return jwt.verify(token, env.jwtSecret, {
+    algorithms: ["HS256"]
+  }) as JwtPayload;
 };

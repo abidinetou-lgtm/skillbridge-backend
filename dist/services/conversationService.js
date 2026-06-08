@@ -1,70 +1,124 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createMessageService = exports.readConversationService = exports.createConversationService = void 0;
+exports.createMessageService = exports.listMessagesService = exports.getConversationService = exports.listConversationsService = void 0;
 const prisma_1 = require("../utils/prisma");
 const httpError_1 = require("../utils/httpError");
-const createConversationService = async (userid) => {
-    return await prisma_1.prisma.conversation.findMany({
+/**
+ * Returns all conversations the user participates in, with the last message
+ * and the "other" participant pre-computed for the UI.
+ */
+const listConversationsService = async (userId) => {
+    const conversations = await prisma_1.prisma.conversation.findMany({
         where: {
             OR: [
-                { firstUserId: userid },
-                { secondUserId: userid }
-            ]
+                { firstUserId: userId },
+                { secondUserId: userId },
+            ],
         },
         include: {
             firstUser: {
-                select: { firstName: true, lastName: true }
+                select: { id: true, firstName: true, lastName: true },
             },
             secondUser: {
-                select: { firstName: true, lastName: true }
+                select: { id: true, firstName: true, lastName: true },
             },
             messages: {
                 orderBy: { createdAt: "desc" },
-                take: 1
-            }
-        }
+                take: 1,
+                include: {
+                    sender: { select: { id: true, firstName: true, lastName: true } },
+                },
+            },
+        },
     });
+    return conversations.map((conv) => ({
+        id: conv.id,
+        status: conv.status,
+        createdAt: conv.createdAt,
+        updatedAt: conv.updatedAt,
+        other: conv.firstUserId === userId ? conv.secondUser : conv.firstUser,
+        lastMessage: conv.messages[0] ?? null,
+    }));
 };
-exports.createConversationService = createConversationService;
-const readConversationService = async (conversationId, userId) => {
+exports.listConversationsService = listConversationsService;
+/**
+ * Returns the metadata (id, status, participants) of a single conversation.
+ * Only participants may access it.
+ */
+const getConversationService = async (conversationId, userId) => {
     const conversation = await prisma_1.prisma.conversation.findUnique({
         where: { id: conversationId },
-        include: { firstUser: true, secondUser: true }
+        include: {
+            firstUser: { select: { id: true, firstName: true, lastName: true } },
+            secondUser: { select: { id: true, firstName: true, lastName: true } },
+        },
     });
-    if (!conversation) {
+    if (!conversation)
         throw new httpError_1.HttpError(404, "Conversation not found");
-    }
-    ;
-    if (conversation.firstUserId !== userId && conversation.secondUserId !== userId) {
+    if (conversation.firstUserId !== userId &&
+        conversation.secondUserId !== userId) {
         throw new httpError_1.HttpError(403, "Forbidden");
     }
-    return await prisma_1.prisma.message.findMany({
+    return {
+        id: conversation.id,
+        status: conversation.status,
+        createdAt: conversation.createdAt,
+        updatedAt: conversation.updatedAt,
+        other: conversation.firstUserId === userId
+            ? conversation.secondUser
+            : conversation.firstUser,
+    };
+};
+exports.getConversationService = getConversationService;
+/**
+ * Returns all messages of a conversation in chronological order.
+ * Only participants may read it.
+ */
+const listMessagesService = async (conversationId, userId) => {
+    const conversation = await prisma_1.prisma.conversation.findUnique({
+        where: { id: conversationId },
+    });
+    if (!conversation)
+        throw new httpError_1.HttpError(404, "Conversation not found");
+    if (conversation.firstUserId !== userId &&
+        conversation.secondUserId !== userId) {
+        throw new httpError_1.HttpError(403, "Forbidden");
+    }
+    return prisma_1.prisma.message.findMany({
         where: { conversationId },
-        orderBy: { createdAt: "asc" }
+        orderBy: { createdAt: "asc" },
+        include: {
+            sender: { select: { id: true, firstName: true, lastName: true } },
+        },
     });
 };
-exports.readConversationService = readConversationService;
+exports.listMessagesService = listMessagesService;
+/**
+ * Creates a new message in the conversation.
+ * Only participants may post.
+ */
 const createMessageService = async (conversationId, userId, body) => {
     const conversation = await prisma_1.prisma.conversation.findUnique({
         where: { id: conversationId },
-        include: { firstUser: true, secondUser: true }
     });
-    if (!conversation) {
+    if (!conversation)
         throw new httpError_1.HttpError(404, "Conversation not found");
-    }
-    ;
-    if (conversation.firstUserId !== userId && conversation.secondUserId !== userId) {
+    if (conversation.firstUserId !== userId &&
+        conversation.secondUserId !== userId) {
         throw new httpError_1.HttpError(403, "Forbidden");
     }
     if (!body || body.trim() === "") {
         throw new httpError_1.HttpError(400, "Message body cannot be empty");
     }
-    return await prisma_1.prisma.message.create({
+    return prisma_1.prisma.message.create({
         data: {
             conversationId,
             senderId: userId,
-            body
-        }
+            body: body.trim(),
+        },
+        include: {
+            sender: { select: { id: true, firstName: true, lastName: true } },
+        },
     });
 };
 exports.createMessageService = createMessageService;

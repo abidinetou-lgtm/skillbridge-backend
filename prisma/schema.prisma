@@ -76,6 +76,7 @@ model User {
   conversationsAsFirstUser  Conversation[] @relation("ConversationFirstUser")
   conversationsAsSecondUser Conversation[] @relation("ConversationSecondUser")
   messages                  Message[]
+  passwordResetTokens       PasswordResetToken[]
 
   rewardTransactions        RewardTransaction[]
   teachingSessionsAsTeacher TeachingSession[]   @relation("SessionTeacher")
@@ -89,6 +90,20 @@ model User {
   @@index([role])
   @@index([status])
   @@index([createdAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model Skill {

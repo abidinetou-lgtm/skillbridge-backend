@@ -5,6 +5,7 @@ const jwt = require("jsonwebtoken");
 const env_1 = require("./env");
 const generateToken = (payload) => {
     const options = {
+        algorithm: "HS256",
         expiresIn: env_1.env.jwtExpiresIn
     };
     // The token contains only safe identity data, never the password hash.
@@ -13,7 +14,9 @@ const generateToken = (payload) => {
 exports.generateToken = generateToken;
 const verifyToken = (token) => {
     // jsonwebtoken throws when the token is expired, malformed, or signed with the wrong secret.
-    return jwt.verify(token, env_1.env.jwtSecret);
+    return jwt.verify(token, env_1.env.jwtSecret, {
+        algorithms: ["HS256"]
+    });
 };
 exports.verifyToken = verifyToken;
 //# sourceMappingURL=jwt.js.map

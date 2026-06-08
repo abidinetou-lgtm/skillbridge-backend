@@ -1,8 +1,11 @@
+import { createHash, randomBytes } from "crypto";
 import { Role, UserStatus } from "@prisma/client";
 import { prisma } from "../utils/prisma";
 import { generateToken } from "../utils/jwt";
 import { HttpError } from "../utils/httpError";
 import { comparePassword, hashPassword } from "../utils/password";
+import { env } from "../utils/env";
+import { sendPasswordResetEmail } from "./emailService";
 
 interface RegisterInput {
   email: string;
@@ -16,6 +19,12 @@ interface LoginInput {
   email: string;
   password: string;
 }
+
+const PASSWORD_RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
+const INVALID_RESET_TOKEN_MESSAGE = "Invalid or expired password reset token";
+
+const hashResetToken = (token: string): string =>
+  createHash("sha256").update(token).digest("hex");
 
 const sanitizeUser = (user: {
   id: string;
@@ -100,4 +109,109 @@ export const getCurrentUser = async (userId: string) => {
   }
 
   return sanitizeUser(user);
+};
+
+export const requestPasswordReset = async (email: string): Promise<void> => {
+  const normalizedEmail = email.trim().toLowerCase();
+  const user = await prisma.user.findUnique({
+    where: { email: normalizedEmail },
+    select: {
+      id: true,
+      email: true,
+      status: true
+    }
+  });
+
+  if (!user || user.status !== UserStatus.ACTIVE) {
+    return;
+  }
+
+  const token = randomBytes(32).toString("hex");
+  const tokenHash = hashResetToken(token);
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + PASSWORD_RESET_TOKEN_TTL_MS);
+
+  await prisma.$transaction([
+    prisma.passwordResetToken.updateMany({
+      where: {
+        userId: user.id,
+        usedAt: null
+      },
+      data: { usedAt: now }
+    }),
+    prisma.passwordResetToken.create({
+      data: {
+        userId: user.id,
+        tokenHash,
+        expiresAt
+      }
+    })
+  ]);
+
+  const resetUrl = new URL(env.passwordResetUrl);
+  resetUrl.searchParams.set("token", token);
+
+  try {
+    await sendPasswordResetEmail({
+      to: user.email,
+      resetUrl: resetUrl.toString()
+    });
+  } catch (error) {
+    console.error("Failed to send password reset email", error);
+  }
+};
+
+export const resetPassword = async (
+  token: string,
+  password: string
+): Promise<void> => {
+  const tokenHash = hashResetToken(token);
+  const resetToken = await prisma.passwordResetToken.findUnique({
+    where: { tokenHash },
+    select: {
+      id: true,
+      userId: true,
+      expiresAt: true,
+      usedAt: true
+    }
+  });
+  const now = new Date();
+
+  if (
+    !resetToken ||
+    resetToken.usedAt ||
+    resetToken.expiresAt.getTime() <= now.getTime()
+  ) {
+    throw new HttpError(400, INVALID_RESET_TOKEN_MESSAGE);
+  }
+
+  const passwordHash = await hashPassword(password);
+
+  await prisma.$transaction(async (transaction) => {
+    const consumed = await transaction.passwordResetToken.updateMany({
+      where: {
+        id: resetToken.id,
+        usedAt: null,
+        expiresAt: { gt: now }
+      },
+      data: { usedAt: now }
+    });
+
+    if (consumed.count !== 1) {
+      throw new HttpError(400, INVALID_RESET_TOKEN_MESSAGE);
+    }
+
+    await transaction.user.update({
+      where: { id: resetToken.userId },
+      data: { passwordHash }
+    });
+
+    await transaction.passwordResetToken.updateMany({
+      where: {
+        userId: resetToken.userId,
+        usedAt: null
+      },
+      data: { usedAt: now }
+    });
+  });
 };
