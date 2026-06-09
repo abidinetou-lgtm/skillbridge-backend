@@ -6,6 +6,8 @@ import {
   deleteSkill,
   getById,
   getMe,
+  getRatings,
+  getRatingSummary,
   search,
   updateMe
 } from "../controllers/userController";
@@ -20,6 +22,8 @@ router.get("/search", search);
 router.get("/me", authenticate, getMe);
 router.put("/me", authenticate, updateMe);
 router.patch("/me", authenticate, updateMe);
+router.get("/:id/ratings", authenticate, getRatings);
+router.get("/:id/rating-summary", authenticate, getRatingSummary);
 router.get("/:id", getById);
 router.post("/skills", authenticate, createSkill);
 router.delete("/skills/:id", authenticate, deleteSkill);

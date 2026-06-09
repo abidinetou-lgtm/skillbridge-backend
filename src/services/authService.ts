@@ -35,6 +35,8 @@ const sanitizeUser = (user: {
   role: Role;
   status: UserStatus;
   credits: number;
+  averageRating: number;
+  totalRatings: number;
   createdAt: Date;
   updatedAt: Date;
 }) => ({
@@ -46,6 +48,8 @@ const sanitizeUser = (user: {
   role:      user.role,
   status:    user.status,
   credits:   user.credits,
+  averageRating: user.averageRating,
+  totalRatings:  user.totalRatings,
   createdAt: user.createdAt,
   updatedAt: user.updatedAt,
 });

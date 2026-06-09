@@ -18,7 +18,7 @@ const learningGoalSelect = {
 const currentUserSelect = {
   id: true, email: true, firstName: true, lastName: true,
   bio: true, avatarUrl: true, availability: true,
-  role: true, status: true, credits: true,
+  role: true, status: true, credits: true, averageRating: true, totalRatings: true,
   teachingSkills: { select: teachingSkillSelect, orderBy: { createdAt: "desc" } },
   learningGoals:  { where: { isActive: true }, select: learningGoalSelect, orderBy: { createdAt: "desc" } },
   createdAt: true, updatedAt: true
@@ -26,7 +26,7 @@ const currentUserSelect = {
 
 const publicUserSelect = {
   id: true, firstName: true, lastName: true, bio: true,
-  avatarUrl: true, availability: true,
+  avatarUrl: true, availability: true, averageRating: true, totalRatings: true,
   teachingSkills: { select: teachingSkillSelect, orderBy: { createdAt: "desc" } },
   learningGoals:  { where: { isActive: true }, select: learningGoalSelect, orderBy: { createdAt: "desc" } },
   createdAt: true
