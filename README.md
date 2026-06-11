@@ -47,6 +47,9 @@ PORT=5000
 NODE_ENV=development
 CORS_ORIGIN=http://localhost:5173
 JWT_EXPIRES_IN=7d
+PASSWORD_RESET_URL=http://localhost:5173/reset-password
+RESEND_API_KEY=re_...
+EMAIL_FROM=SkillBridge <no-reply@example.com>
 ```
 
 En production (Coolify) :
@@ -107,6 +110,8 @@ backend/
 |---|---|---|---|
 | POST | `/auth/register` | Inscription | Non |
 | POST | `/auth/login` | Connexion → JWT | Non |
+| POST | `/auth/forgot-password` | Demander un lien de réinitialisation | Non |
+| POST | `/auth/reset-password` | Réinitialiser le mot de passe | Non |
 | GET | `/auth/me` | Profil connecté | Oui |
 
 ### Users
@@ -209,7 +214,7 @@ Le `Dockerfile` à la racine du repo gère :
 
 Variables à configurer dans Coolify :
 ```
-DATABASE_URL, JWT_SECRET, PORT, NODE_ENV, CORS_ORIGIN, JWT_EXPIRES_IN
+DATABASE_URL, JWT_SECRET, PORT, NODE_ENV, CORS_ORIGIN, JWT_EXPIRES_IN, PASSWORD_RESET_URL, RESEND_API_KEY, EMAIL_FROM
 ```
 
 **Pre-deploy command dans Coolify :**

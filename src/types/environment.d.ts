@@ -6,5 +6,8 @@ declare namespace NodeJS {
     DATABASE_URL?: string;
     JWT_SECRET?: string;
     JWT_EXPIRES_IN?: string;
+    PASSWORD_RESET_URL?: string;
+    RESEND_API_KEY?: string;
+    EMAIL_FROM?: string;
   }
 }

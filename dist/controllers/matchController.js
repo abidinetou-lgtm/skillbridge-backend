@@ -4,18 +4,13 @@ exports.update = exports.mine = exports.request = exports.suggestions = void 0;
 const client_1 = require("@prisma/client");
 const matchService_1 = require("../services/matchService");
 const httpError_1 = require("../utils/httpError");
-const getAuthenticatedUserId = (req) => {
-    if (!req.user) {
-        throw new httpError_1.HttpError(401, "Authentication required");
-    }
-    return req.user.id;
-};
+const requestHelpers_1 = require("../utils/requestHelpers");
 const suggestions = async (req, res, next) => {
     try {
-        const userId = getAuthenticatedUserId(req);
+        const userId = (0, requestHelpers_1.getAuthenticatedUserId)(req);
         const matches = await (0, matchService_1.getMatchSuggestions)(userId);
         // Return a simple list for the MVP. More match metadata can be added later.
-        res.status(200).json({ matches });
+        res.status(200).json({ suggestions: matches });
     }
     catch (error) {
         next(error);
@@ -24,7 +19,7 @@ const suggestions = async (req, res, next) => {
 exports.suggestions = suggestions;
 const request = async (req, res, next) => {
     try {
-        const requesterId = getAuthenticatedUserId(req);
+        const requesterId = (0, requestHelpers_1.getAuthenticatedUserId)(req);
         const { receiverId, skillId, message } = req.body;
         if (typeof receiverId !== "string" || receiverId.trim().length === 0) {
             throw new httpError_1.HttpError(400, "receiverId is required");
@@ -50,7 +45,7 @@ const request = async (req, res, next) => {
 exports.request = request;
 const mine = async (req, res, next) => {
     try {
-        const userId = getAuthenticatedUserId(req);
+        const userId = (0, requestHelpers_1.getAuthenticatedUserId)(req);
         const matches = await (0, matchService_1.getMyMatches)(userId);
         res.status(200).json({ matches });
     }
@@ -61,7 +56,7 @@ const mine = async (req, res, next) => {
 exports.mine = mine;
 const update = async (req, res, next) => {
     try {
-        const userId = getAuthenticatedUserId(req);
+        const userId = (0, requestHelpers_1.getAuthenticatedUserId)(req);
         const { id } = req.params;
         const { status } = req.body;
         if (typeof id !== "string" || id.trim().length === 0) {
