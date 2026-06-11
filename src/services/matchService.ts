@@ -160,9 +160,6 @@ export const getMatchSuggestions = async (userId: string) => {
       ...matchedUserSelect,
       teachingSkills: {
         where: {
-          skillId: {
-            in: learningSkillIds
-          },
           skill: {
             isActive: true
           }
