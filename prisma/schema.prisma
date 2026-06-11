@@ -64,6 +64,7 @@ model User {
   availability String?    // JSON: { "Lundi_Matin": true, "Mardi_Soir": true, ... }
   role         Role       @default(USER)
   status       UserStatus @default(ACTIVE)
+  isEmailVerified Boolean @default(false)
 
   credits Int @default(120)
 
@@ -82,13 +83,29 @@ model User {
   teachingSessionsAsLearner TeachingSession[]   @relation("SessionLearner")
 
   adminSupportCreated RewardTransaction[] @relation("AdminRewardTransactions")
+  emailVerificationTokens EmailVerificationToken[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([role])
   @@index([status])
+  @@index([isEmailVerified])
   @@index([createdAt])
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model Skill {

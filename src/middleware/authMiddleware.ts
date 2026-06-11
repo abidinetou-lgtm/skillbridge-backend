@@ -1,12 +1,13 @@
 import { NextFunction, Request, Response } from "express";
-import { Role } from "@prisma/client";
+import { Role, UserStatus } from "@prisma/client";
 import { verifyToken } from "../utils/jwt";
+import { prisma } from "../utils/prisma";
 
-export const authenticate = (
+export const authenticate = async (
   req: Request,
   res: Response,
   next: NextFunction
-): void => {
+): Promise<void> => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader?.startsWith("Bearer ")) {
@@ -18,11 +19,30 @@ export const authenticate = (
 
   try {
     const payload = verifyToken(token);
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: {
+        id: true,
+        role: true,
+        status: true,
+        isEmailVerified: true
+      }
+    });
+
+    if (!user || user.status !== UserStatus.ACTIVE) {
+      res.status(401).json({ message: "Invalid or expired token" });
+      return;
+    }
+
+    if (!user.isEmailVerified) {
+      res.status(403).json({ message: "Please verify your email address before signing in." });
+      return;
+    }
 
     // Store the verified identity on the request for controllers that need the current user.
     req.user = {
-      id: payload.userId,
-      role: payload.role
+      id: user.id,
+      role: user.role
     };
 
     next();

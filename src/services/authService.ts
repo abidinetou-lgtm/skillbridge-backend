@@ -3,6 +3,7 @@ import { prisma } from "../utils/prisma";
 import { generateToken } from "../utils/jwt";
 import { HttpError } from "../utils/httpError";
 import { comparePassword, hashPassword } from "../utils/password";
+import { resendEmailVerification, sendUserVerificationEmail, verifyEmailToken } from "./emailVerificationService";
 
 interface RegisterInput {
   email: string;
@@ -25,6 +26,7 @@ const sanitizeUser = (user: {
   bio: string | null;
   role: Role;
   status: UserStatus;
+  isEmailVerified: boolean;
   credits: number;
   createdAt: Date;
   updatedAt: Date;
@@ -36,6 +38,7 @@ const sanitizeUser = (user: {
   bio:       user.bio,
   role:      user.role,
   status:    user.status,
+  isEmailVerified: user.isEmailVerified,
   credits:   user.credits,
   createdAt: user.createdAt,
   updatedAt: user.updatedAt,
@@ -62,11 +65,16 @@ export const registerUser = async (input: RegisterInput) => {
       lastName:     input.lastName.trim(),
       bio:          input.bio?.trim(),
       role:         Role.USER,
+      isEmailVerified: false,
     },
   });
 
-  const token = generateToken({ userId: user.id, role: user.role });
-  return { user: sanitizeUser(user), token };
+  await sendUserVerificationEmail(user);
+
+  return {
+    user: sanitizeUser(user),
+    message: "Registration successful. Please verify your email address before signing in."
+  };
 };
 
 export const loginUser = async (input: LoginInput) => {
@@ -86,6 +94,10 @@ export const loginUser = async (input: LoginInput) => {
     throw new HttpError(401, "Invalid email or password");
   }
 
+  if (!user.isEmailVerified) {
+    throw new HttpError(403, "Please verify your email address before signing in.");
+  }
+
   const token = generateToken({ userId: user.id, role: user.role });
   return { user: sanitizeUser(user), token };
 };
@@ -99,5 +111,26 @@ export const getCurrentUser = async (userId: string) => {
     throw new HttpError(404, "User not found");
   }
 
+  if (!user.isEmailVerified) {
+    throw new HttpError(403, "Please verify your email address before signing in.");
+  }
+
   return sanitizeUser(user);
+};
+
+export const verifyUserEmail = async (token: string) => {
+  const user = await verifyEmailToken(token);
+
+  return {
+    user: sanitizeUser(user),
+    message: "Email address verified successfully."
+  };
+};
+
+export const resendUserVerificationEmail = async (email: string) => {
+  await resendEmailVerification(email);
+
+  return {
+    message: "If an unverified account exists for this email, a new verification link has been sent."
+  };
 };
