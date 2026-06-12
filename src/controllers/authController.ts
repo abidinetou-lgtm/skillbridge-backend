@@ -3,7 +3,9 @@ import {
   getCurrentUser,
   loginUser,
   registerUser,
+  requestPasswordReset,
   resendUserVerificationEmail,
+  resetPasswordService,
   verifyUserEmail
 } from "../services/authService";
 

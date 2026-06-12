@@ -78,6 +78,11 @@ export const env = {
   jwtSecret: process.env.JWT_SECRET ?? "development-only-secret-change-me",
   jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? "7d",
   appUrl: process.env.APP_URL ?? `http://localhost:${parsePort(process.env.PORT)}`,
+  passwordResetUrl: parseUrl(
+    process.env.PASSWORD_RESET_URL,
+    "http://localhost:5173/reset-password"
+  ),
   resendApiKey: process.env.RESEND_API_KEY,
-  resendFromEmail: process.env.RESEND_FROM_EMAIL ?? "SkillBridge <onboarding@resend.dev>"
+  resendFromEmail: process.env.RESEND_FROM_EMAIL ?? "SkillBridge <onboarding@resend.dev>",
+  requireEmailVerification: process.env.REQUIRE_EMAIL_VERIFICATION === "true",
 };
