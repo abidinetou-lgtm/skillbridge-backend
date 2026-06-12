@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { Role, UserStatus } from "@prisma/client";
 import { verifyToken } from "../utils/jwt";
 import { prisma } from "../utils/prisma";
+import { env } from "../utils/env";
 
 export const authenticate = async (
   req: Request,
@@ -34,7 +35,7 @@ export const authenticate = async (
       return;
     }
 
-    if (!user.isEmailVerified) {
+    if (env.requireEmailVerification && !user.isEmailVerified) {
       res.status(403).json({ message: "Please verify your email address before signing in." });
       return;
     }

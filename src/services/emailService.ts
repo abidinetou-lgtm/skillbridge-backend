@@ -3,6 +3,44 @@ import { env } from "../utils/env";
 
 const resend = env.resendApiKey ? new Resend(env.resendApiKey) : null;
 
+interface PasswordResetEmailInput {
+  to: string;
+  resetUrl: string;
+}
+
+export const sendPasswordResetEmail = async ({
+  to,
+  resetUrl
+}: PasswordResetEmailInput): Promise<void> => {
+  if (env.nodeEnv !== "production") {
+    console.log(`Password reset URL for ${to}: ${resetUrl}`);
+  }
+
+  if (!resend) {
+    if (env.nodeEnv === "production") {
+      throw new Error("RESEND_API_KEY is required to send password reset emails");
+    }
+    return;
+  }
+
+  const { error } = await resend.emails.send({
+    from: env.resendFromEmail,
+    to,
+    subject: "Reset your SkillBridge password",
+    text: [
+      "A password reset was requested for your SkillBridge account.",
+      "",
+      `Reset your password: ${resetUrl}`,
+      "",
+      "This link expires in one hour. If you did not request it, you can ignore this email."
+    ].join("\n")
+  });
+
+  if (error) {
+    throw new Error(`Resend failed to send password reset email: ${error.message}`);
+  }
+};
+
 const escapeHtml = (value: string): string =>
   value
     .replace(/&/g, "&amp;")
