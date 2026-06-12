@@ -3,19 +3,48 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.me = exports.resendVerification = exports.verifyEmail = exports.login = exports.register = void 0;
 const authService_1 = require("../services/authService");
 const isNonEmptyString = (value) => typeof value === "string" && value.trim().length > 0;
+const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+const sendValidationErrors = (res, errors) => {
+    res.status(400).json({
+        message: "Validation failed",
+        errors
+    });
+};
 const register = async (req, res, next) => {
     try {
         const { email, password, firstName, lastName, bio } = req.body;
-        // Keep basic validation close to the controller because it protects the HTTP boundary.
-        if (!isNonEmptyString(email) ||
-            !isNonEmptyString(password) ||
-            !isNonEmptyString(firstName) ||
-            !isNonEmptyString(lastName)) {
-            res.status(400).json({ message: "email, password, firstName, and lastName are required" });
-            return;
+        const errors = [];
+        if (!isNonEmptyString(email)) {
+            errors.push({ field: "email", message: "Email is required" });
         }
-        if (password.length < 8) {
-            res.status(400).json({ message: "Password must be at least 8 characters long" });
+        else if (!isValidEmail(email)) {
+            errors.push({ field: "email", message: "Email must be valid" });
+        }
+        if (!isNonEmptyString(password)) {
+            errors.push({ field: "password", message: "Password is required" });
+        }
+        else {
+            if (password.length < 8) {
+                errors.push({
+                    field: "password",
+                    message: "Password must be at least 8 characters long"
+                });
+            }
+            if (password.length > 128) {
+                errors.push({
+                    field: "password",
+                    message: "Password must be at most 128 characters long"
+                });
+            }
+        }
+        if (!isNonEmptyString(firstName)) {
+            errors.push({ field: "firstName", message: "First name is required" });
+        }
+        if (!isNonEmptyString(lastName)) {
+            errors.push({ field: "lastName", message: "Last name is required" });
+        }
+        if (errors.length > 0) {
+            sendValidationErrors(res, errors);
             return;
         }
         const result = await (0, authService_1.registerUser)({ email, password, firstName, lastName, bio });
@@ -29,8 +58,15 @@ exports.register = register;
 const login = async (req, res, next) => {
     try {
         const { email, password } = req.body;
-        if (!isNonEmptyString(email) || !isNonEmptyString(password)) {
-            res.status(400).json({ message: "email and password are required" });
+        const errors = [];
+        if (!isNonEmptyString(email)) {
+            errors.push({ field: "email", message: "Email is required" });
+        }
+        if (!isNonEmptyString(password)) {
+            errors.push({ field: "password", message: "Password is required" });
+        }
+        if (errors.length > 0) {
+            sendValidationErrors(res, errors);
             return;
         }
         const result = await (0, authService_1.loginUser)({ email, password });

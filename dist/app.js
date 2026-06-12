@@ -5,10 +5,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const cors = require("cors");
 const express = require("express");
+const helmet_1 = __importDefault(require("helmet"));
 const errorMiddleware_1 = require("./middleware/errorMiddleware");
 const routes_1 = __importDefault(require("./routes"));
 const env_1 = require("./utils/env");
 const app = express();
+app.use((0, helmet_1.default)());
 // CORS controls which frontend applications are allowed to call this API.
 app.use(cors({
     origin: env_1.env.corsOrigin,

@@ -1,3 +1,4 @@
+import { createHash, randomBytes } from "crypto";
 import { Role, UserStatus } from "@prisma/client";
 import { prisma } from "../utils/prisma";
 import { generateToken } from "../utils/jwt";
@@ -18,6 +19,12 @@ interface LoginInput {
   password: string;
 }
 
+const PASSWORD_RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
+const INVALID_RESET_TOKEN_MESSAGE = "Invalid or expired password reset token";
+
+const hashResetToken = (token: string): string =>
+  createHash("sha256").update(token).digest("hex");
+
 const sanitizeUser = (user: {
   id: string;
   email: string;
@@ -28,6 +35,8 @@ const sanitizeUser = (user: {
   status: UserStatus;
   isEmailVerified: boolean;
   credits: number;
+  averageRating: number;
+  totalRatings: number;
   createdAt: Date;
   updatedAt: Date;
 }) => ({
@@ -40,6 +49,8 @@ const sanitizeUser = (user: {
   status:    user.status,
   isEmailVerified: user.isEmailVerified,
   credits:   user.credits,
+  averageRating: user.averageRating,
+  totalRatings:  user.totalRatings,
   createdAt: user.createdAt,
   updatedAt: user.updatedAt,
 });

@@ -9,6 +9,7 @@ import {
   searchUsers,
   updateUserProfile
 } from "../services/userService";
+import { getUserRatings, getUserRatingSummary } from "../services/ratingService";
 import { HttpError } from "../utils/httpError";
 import { getAuthenticatedUserId } from "../utils/requestHelpers";
 import {
@@ -68,6 +69,34 @@ export const getById = async (
     const user = await getPublicUserProfile(getRouteId(req));
 
     res.status(200).json({ user });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getRatings = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const ratings = await getUserRatings(getRouteId(req));
+
+    res.status(200).json(ratings);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getRatingSummary = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const summary = await getUserRatingSummary(getRouteId(req));
+
+    res.status(200).json(summary);
   } catch (error) {
     next(error);
   }

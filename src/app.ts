@@ -1,10 +1,13 @@
 import cors = require("cors");
 import express = require("express");
+import helmet from "helmet";
 import { errorMiddleware } from "./middleware/errorMiddleware";
 import routes from "./routes";
 import { env } from "./utils/env";
 
 const app = express();
+
+app.use(helmet());
 
 // CORS controls which frontend applications are allowed to call this API.
 app.use(

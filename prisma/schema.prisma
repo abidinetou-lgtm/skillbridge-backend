@@ -67,6 +67,8 @@ model User {
   isEmailVerified Boolean @default(false)
 
   credits Int @default(120)
+  averageRating Float @default(0)
+  totalRatings  Int   @default(0)
 
   teachingSkills UserSkill[]
   learningGoals  LearningGoal[]
@@ -77,10 +79,13 @@ model User {
   conversationsAsFirstUser  Conversation[] @relation("ConversationFirstUser")
   conversationsAsSecondUser Conversation[] @relation("ConversationSecondUser")
   messages                  Message[]
+  passwordResetTokens       PasswordResetToken[]
 
   rewardTransactions        RewardTransaction[]
   teachingSessionsAsTeacher TeachingSession[]   @relation("SessionTeacher")
   teachingSessionsAsLearner TeachingSession[]   @relation("SessionLearner")
+  ratingsGiven              SessionRating[]     @relation("RatingReviewer")
+  ratingsReceived           SessionRating[]     @relation("RatingReviewedUser")
 
   adminSupportCreated RewardTransaction[] @relation("AdminRewardTransactions")
   emailVerificationTokens EmailVerificationToken[]
@@ -191,7 +196,7 @@ model Match {
 
 model Conversation {
   id           String             @id @default(uuid())
-  matchId      String             @unique
+  matchId      String?            @unique
   firstUserId  String
   secondUserId String
   status       ConversationStatus @default(ACTIVE)
@@ -270,6 +275,7 @@ model TeachingSession {
   teacher User    @relation("SessionTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
   learner User    @relation("SessionLearner", fields: [learnerId], references: [id], onDelete: Cascade)
   skill   Skill?  @relation(fields: [skillId], references: [id], onDelete: SetNull)
+  ratings SessionRating[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -279,4 +285,24 @@ model TeachingSession {
   @@index([learnerId, startsAt])
   @@index([skillId])
   @@index([status])
+}
+
+model SessionRating {
+  id             String @id @default(uuid())
+  sessionId      String
+  reviewerId     String
+  reviewedUserId String
+  rating         Int
+  comment        String?
+
+  session      TeachingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  reviewer     User            @relation("RatingReviewer", fields: [reviewerId], references: [id], onDelete: Cascade)
+  reviewedUser User            @relation("RatingReviewedUser", fields: [reviewedUserId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([sessionId, reviewerId, reviewedUserId])
+  @@index([reviewedUserId, createdAt])
+  @@index([reviewerId])
+  @@index([sessionId])
 }

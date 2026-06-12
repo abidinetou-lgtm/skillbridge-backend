@@ -1,6 +1,7 @@
 import { prisma } from "../utils/prisma";
 import { HttpError } from "../utils/httpError";
 import { v4 as uuid } from "uuid";
+import { grantCredits, spendCredits } from "./creditService";
 
 export const createSessionService = async (
   teacherId: string,
@@ -22,14 +23,12 @@ export const createSessionService = async (
 
   const jitsiRoomId = `skillbridge-${uuid()}`;
 
-  // Debit the learner and create the session atomically so a partial failure
-  // cannot leave the learner's balance decremented without a matching session.
-  const [, session] = await prisma.$transaction([
-    prisma.user.update({
-      where: { id: learnerId },
-      data: { credits: { decrement: estimatedDuration } },
-    }),
-    prisma.teachingSession.create({
+  // Debit the learner and create the session atomically so concurrent requests
+  // cannot overspend the same balance.
+  const session = await prisma.$transaction(async (transaction) => {
+    await spendCredits(transaction, learnerId, estimatedDuration);
+
+    return transaction.teachingSession.create({
       data: {
         jitsiRoomId,
         teacherId,
@@ -38,8 +37,8 @@ export const createSessionService = async (
         creditsReserved: estimatedDuration,
         startsAt: scheduledAt,
       },
-    }),
-  ]);
+    });
+  });
 
   return session;
 };
@@ -77,30 +76,30 @@ export const endSessionService = async (
   // the learner before paying the teacher.
   const creditsRefunded = session.creditsReserved - creditsConsumed;
 
-  await prisma.$transaction([
-    // Pay the teacher for the actual time spent.
-    prisma.user.update({
-      where: { id: session.teacherId },
-      data: { credits: { increment: creditsConsumed } },
-    }),
-    // Refund unused reserved credits to the learner (no-op when consumed === reserved).
-    ...(creditsRefunded > 0
-      ? [
-          prisma.user.update({
-            where: { id: session.learnerId },
-            data: { credits: { increment: creditsRefunded } },
-          }),
-        ]
-      : []),
-    prisma.teachingSession.update({
-      where: { id: sessionId },
+  await prisma.$transaction(async (transaction) => {
+    const completed = await transaction.teachingSession.updateMany({
+      where: {
+        id: sessionId,
+        status: "ACTIVE",
+      },
       data: {
         status: "COMPLETED",
         actualEndedAt: new Date(),
         creditsConsumed,
       },
-    }),
-  ]);
+    });
+
+    if (completed.count !== 1) {
+      throw new HttpError(400, "Session is not active");
+    }
+
+    // Teacher rewards and learner refunds are permanent but cannot exceed the cap.
+    await grantCredits(transaction, session.teacherId, creditsConsumed);
+
+    if (creditsRefunded > 0) {
+      await grantCredits(transaction, session.learnerId, creditsRefunded);
+    }
+  });
 };
 
 export const joinSessionService = async (

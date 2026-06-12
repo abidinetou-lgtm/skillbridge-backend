@@ -7,6 +7,7 @@ import {
   endSessionService,
   joinSessionService,
 } from "../services/sessionService";
+import { createSessionRating } from "../services/ratingService";
 
 const SESSION_SELECT = {
   id: true,
@@ -140,6 +141,43 @@ export const joinSessionController = async (
       jitsiRoomId,
       jitsiUrl: `https://meet.jit.si/${jitsiRoomId}#config.prejoinPageEnabled=false`,
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// POST /sessions/:id/rating
+export const createSessionRatingController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const sessionId = req.params.id as string;
+    const reviewerId = getAuthenticatedUserId(req);
+    const { reviewedUserId, rating, comment } = req.body;
+
+    if (typeof reviewedUserId !== "string" || reviewedUserId.trim().length === 0) {
+      throw new HttpError(400, "reviewedUserId is required");
+    }
+
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      throw new HttpError(400, "rating must be an integer between 1 and 5");
+    }
+
+    if (comment !== undefined && comment !== null && typeof comment !== "string") {
+      throw new HttpError(400, "comment must be a string");
+    }
+
+    const sessionRating = await createSessionRating({
+      sessionId,
+      reviewerId,
+      reviewedUserId: reviewedUserId.trim(),
+      rating,
+      comment
+    });
+
+    res.status(201).json({ rating: sessionRating });
   } catch (error) {
     next(error);
   }

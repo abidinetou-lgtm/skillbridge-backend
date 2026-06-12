@@ -7,8 +7,14 @@ import {
   verifyEmail
 } from "../controllers/authController";
 import { authenticate } from "../middleware/authMiddleware";
+import { authRateLimiter } from "../middleware/authRateLimit";
 
 const router = Router();
+
+router.use(
+  ["/register", "/login", "/forgot-password", "/reset-password"],
+  authRateLimiter
+);
 
 router.post("/register", register);
 router.post("/login", login);
