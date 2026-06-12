@@ -3,8 +3,8 @@ import {
   getCurrentUser,
   loginUser,
   registerUser,
-  requestPasswordReset,
-  resetPassword as resetPasswordService
+  resendUserVerificationEmail,
+  verifyUserEmail
 } from "../services/authService";
 
 const isNonEmptyString = (value: unknown): value is string =>
@@ -113,6 +113,48 @@ export const login = async (
     }
 
     const result = await loginUser({ email, password });
+
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const verifyEmail = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { token } = req.query;
+
+    if (!isNonEmptyString(token)) {
+      res.status(400).json({ message: "Verification token is required" });
+      return;
+    }
+
+    const result = await verifyUserEmail(token);
+
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const resendVerification = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { email } = req.body;
+
+    if (!isNonEmptyString(email)) {
+      res.status(400).json({ message: "email is required" });
+      return;
+    }
+
+    const result = await resendUserVerificationEmail(email);
 
     res.status(200).json(result);
   } catch (error) {

@@ -64,6 +64,7 @@ model User {
   availability String?    // JSON: { "Lundi_Matin": true, "Mardi_Soir": true, ... }
   role         Role       @default(USER)
   status       UserStatus @default(ACTIVE)
+  isEmailVerified Boolean @default(false)
 
   credits Int @default(120)
   averageRating Float @default(0)
@@ -87,16 +88,18 @@ model User {
   ratingsReceived           SessionRating[]     @relation("RatingReviewedUser")
 
   adminSupportCreated RewardTransaction[] @relation("AdminRewardTransactions")
+  emailVerificationTokens EmailVerificationToken[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([role])
   @@index([status])
+  @@index([isEmailVerified])
   @@index([createdAt])
 }
 
-model PasswordResetToken {
+model EmailVerificationToken {
   id        String    @id @default(uuid())
   userId    String
   tokenHash String    @unique

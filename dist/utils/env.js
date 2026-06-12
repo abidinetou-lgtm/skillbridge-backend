@@ -47,7 +47,10 @@ exports.env = {
     port: parsePort(process.env.PORT),
     corsOrigin: parseCorsOrigin(process.env.CORS_ORIGIN),
     databaseUrl: process.env.DATABASE_URL,
-    jwtSecret: parseJwtSecret(process.env.JWT_SECRET),
-    jwtExpiresIn: parseJwtExpiresIn(process.env.JWT_EXPIRES_IN)
+    jwtSecret: process.env.JWT_SECRET ?? "development-only-secret-change-me",
+    jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? "7d",
+    appUrl: process.env.APP_URL ?? `http://localhost:${parsePort(process.env.PORT)}`,
+    resendApiKey: process.env.RESEND_API_KEY,
+    resendFromEmail: process.env.RESEND_FROM_EMAIL ?? "SkillBridge <onboarding@resend.dev>"
 };
 //# sourceMappingURL=env.js.map
