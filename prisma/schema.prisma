@@ -281,6 +281,8 @@ model TeachingSession {
   endsAt           DateTime?
   actualStartedAt  DateTime?
   actualEndedAt    DateTime?
+  teacherJoinedAt  DateTime?
+  learnerJoinedAt  DateTime?
   creditsReserved  Int                   @default(0)
   creditsConsumed  Int                   @default(0)
   notes            String?
