@@ -114,10 +114,10 @@ export const endSessionController = async (
 
     if (
       durationSeconds === undefined ||
-      typeof durationSeconds !== "number" ||
+      !Number.isSafeInteger(durationSeconds) ||
       durationSeconds < 0
     ) {
-      throw new HttpError(400, "durationSeconds (non-negative number) is required");
+      throw new HttpError(400, "durationSeconds (safe non-negative integer) is required");
     }
 
     await endSessionService(sessionId, userId, durationSeconds);
