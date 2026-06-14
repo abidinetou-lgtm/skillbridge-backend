@@ -5,6 +5,8 @@ import {
   getConversationService,
   listMessagesService,
   createMessageService,
+  archiveConversationService,
+  unarchiveConversationService,
 } from "../services/conversationService";
 
 // GET /conversations
@@ -66,6 +68,38 @@ export const createMessageController = async (
     const body = req.body.body as string;
     const data = await createMessageService(conversationId, userId, body);
     res.status(201).json(data);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// PATCH /conversations/:id/archive
+export const archiveConversationController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const userId = getAuthenticatedUserId(req);
+    const conversationId = req.params.id as string;
+    const data = await archiveConversationService(conversationId, userId);
+    res.status(200).json(data);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// PATCH /conversations/:id/unarchive
+export const unarchiveConversationController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const userId = getAuthenticatedUserId(req);
+    const conversationId = req.params.id as string;
+    const data = await unarchiveConversationService(conversationId, userId);
+    res.status(200).json(data);
   } catch (error) {
     next(error);
   }

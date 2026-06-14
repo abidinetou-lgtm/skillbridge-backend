@@ -61,6 +61,7 @@ model User {
   lastName     String
   bio          String?
   avatarUrl    String?
+  bannerUrl    String?
   availability String?    // JSON: { "Lundi_Matin": true, "Mardi_Soir": true, ... }
   role         Role       @default(USER)
   status       UserStatus @default(ACTIVE)
