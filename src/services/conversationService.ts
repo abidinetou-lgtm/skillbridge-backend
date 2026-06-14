@@ -15,10 +15,10 @@ export const listConversationsService = async (userId: string) => {
     },
     include: {
       firstUser: {
-        select: { id: true, firstName: true, lastName: true },
+        select: { id: true, firstName: true, lastName: true, avatarUrl: true },
       },
       secondUser: {
-        select: { id: true, firstName: true, lastName: true },
+        select: { id: true, firstName: true, lastName: true, avatarUrl: true },
       },
       messages: {
         orderBy: { createdAt: "desc" },
@@ -138,5 +138,32 @@ export const createMessageService = async (
     include: {
       sender: { select: { id: true, firstName: true, lastName: true } },
     },
+  });
+};
+
+const resolveParticipant = async (conversationId: string, userId: string) => {
+  const conversation = await prisma.conversation.findUnique({ where: { id: conversationId } });
+  if (!conversation) throw new HttpError(404, "Conversation not found");
+  if (conversation.firstUserId !== userId && conversation.secondUserId !== userId) {
+    throw new HttpError(403, "Forbidden");
+  }
+  return conversation;
+};
+
+export const archiveConversationService = async (conversationId: string, userId: string) => {
+  await resolveParticipant(conversationId, userId);
+  return prisma.conversation.update({
+    where: { id: conversationId },
+    data: { status: "ARCHIVED" },
+    select: { id: true, status: true },
+  });
+};
+
+export const unarchiveConversationService = async (conversationId: string, userId: string) => {
+  await resolveParticipant(conversationId, userId);
+  return prisma.conversation.update({
+    where: { id: conversationId },
+    data: { status: "ACTIVE" },
+    select: { id: true, status: true },
   });
 };
