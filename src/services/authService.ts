@@ -183,7 +183,7 @@ export const requestPasswordReset = async (email: string): Promise<void> => {
     }),
   ]);
 
-  const resetUrl = new URL(env.passwordResetUrl);
+  const resetUrl = new URL(`${env.frontendUrl}/reset-password`);
   resetUrl.searchParams.set("token", token);
 
   try {
