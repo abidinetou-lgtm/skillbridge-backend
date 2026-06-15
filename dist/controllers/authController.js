@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.me = exports.login = exports.register = void 0;
+exports.me = exports.resendVerification = exports.verifyEmail = exports.login = exports.register = void 0;
 const authService_1 = require("../services/authService");
 const isNonEmptyString = (value) => typeof value === "string" && value.trim().length > 0;
 const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -77,6 +77,36 @@ const login = async (req, res, next) => {
     }
 };
 exports.login = login;
+const verifyEmail = async (req, res, next) => {
+    try {
+        const { token } = req.query;
+        if (!isNonEmptyString(token)) {
+            res.status(400).json({ message: "Verification token is required" });
+            return;
+        }
+        const result = await (0, authService_1.verifyUserEmail)(token);
+        res.status(200).json(result);
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.verifyEmail = verifyEmail;
+const resendVerification = async (req, res, next) => {
+    try {
+        const { email } = req.body;
+        if (!isNonEmptyString(email)) {
+            res.status(400).json({ message: "email is required" });
+            return;
+        }
+        const result = await (0, authService_1.resendUserVerificationEmail)(email);
+        res.status(200).json(result);
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.resendVerification = resendVerification;
 const me = async (req, res, next) => {
     try {
         if (!req.user) {

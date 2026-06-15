@@ -5,6 +5,7 @@ export interface UpdateProfileInput {
   lastName?: string;
   bio?: string | null;
   avatarUrl?: string | null;
+  bannerUrl?: string | null;
   availability?: string | null; // JSON string
 }
 
@@ -62,6 +63,7 @@ export const parseUpdateProfileInput = (body: unknown): UpdateProfileInput => {
     lastName,
     bio:          optionalTrimmedString(body.bio, "bio", MAX_LONG_TEXT_LENGTH),
     avatarUrl:    optionalTrimmedString(body.avatarUrl, "avatarUrl", 500),
+    bannerUrl:    optionalTrimmedString(body.bannerUrl, "bannerUrl", 500),
     availability: optionalTrimmedString(body.availability, "availability", 2000),
   };
 

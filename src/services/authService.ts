@@ -5,6 +5,7 @@ import { generateToken } from "../utils/jwt";
 import { HttpError } from "../utils/httpError";
 import { comparePassword, hashPassword } from "../utils/password";
 import { env } from "../utils/env";
+import { resendEmailVerification, sendUserVerificationEmail, verifyEmailToken } from "./emailVerificationService";
 import { sendPasswordResetEmail } from "./emailService";
 
 interface RegisterInput {
@@ -34,24 +35,26 @@ const sanitizeUser = (user: {
   bio: string | null;
   role: Role;
   status: UserStatus;
+  isEmailVerified: boolean;
   credits: number;
   averageRating: number;
   totalRatings: number;
   createdAt: Date;
   updatedAt: Date;
 }) => ({
-  id:        user.id,
-  email:     user.email,
-  firstName: user.firstName,
-  lastName:  user.lastName,
-  bio:       user.bio,
-  role:      user.role,
-  status:    user.status,
-  credits:   user.credits,
-  averageRating: user.averageRating,
-  totalRatings:  user.totalRatings,
-  createdAt: user.createdAt,
-  updatedAt: user.updatedAt,
+  id:              user.id,
+  email:           user.email,
+  firstName:       user.firstName,
+  lastName:        user.lastName,
+  bio:             user.bio,
+  role:            user.role,
+  status:          user.status,
+  isEmailVerified: user.isEmailVerified,
+  credits:         user.credits,
+  averageRating:   user.averageRating,
+  totalRatings:    user.totalRatings,
+  createdAt:       user.createdAt,
+  updatedAt:       user.updatedAt,
 });
 
 export const registerUser = async (input: RegisterInput) => {
@@ -69,17 +72,31 @@ export const registerUser = async (input: RegisterInput) => {
 
   const user = await prisma.user.create({
     data: {
-      email:        normalizedEmail,
+      email:           normalizedEmail,
       passwordHash,
-      firstName:    input.firstName.trim(),
-      lastName:     input.lastName.trim(),
-      bio:          input.bio?.trim(),
-      role:         Role.USER,
+      firstName:       input.firstName.trim(),
+      lastName:        input.lastName.trim(),
+      bio:             input.bio?.trim(),
+      role:            Role.USER,
+      isEmailVerified: false,
     },
   });
 
-  const token = generateToken({ userId: user.id, role: user.role });
-  return { user: sanitizeUser(user), token };
+  // Always send the verification email (fire-and-forget so it never blocks registration)
+  sendUserVerificationEmail(user).catch((err) => {
+    console.error("Failed to send verification email", err);
+  });
+
+  if (!env.requireEmailVerification) {
+    // Historic behaviour: return a token for immediate auto-login
+    const token = generateToken({ userId: user.id, role: user.role });
+    return { user: sanitizeUser(user), token };
+  }
+
+  return {
+    user: sanitizeUser(user),
+    message: "Registration successful. Please verify your email address before signing in.",
+  };
 };
 
 export const loginUser = async (input: LoginInput) => {
@@ -99,6 +116,10 @@ export const loginUser = async (input: LoginInput) => {
     throw new HttpError(401, "Invalid email or password");
   }
 
+  if (env.requireEmailVerification && !user.isEmailVerified) {
+    throw new HttpError(403, "Please verify your email address before signing in.");
+  }
+
   const token = generateToken({ userId: user.id, role: user.role });
   return { user: sanitizeUser(user), token };
 };
@@ -112,18 +133,35 @@ export const getCurrentUser = async (userId: string) => {
     throw new HttpError(404, "User not found");
   }
 
+  if (env.requireEmailVerification && !user.isEmailVerified) {
+    throw new HttpError(403, "Please verify your email address before signing in.");
+  }
+
   return sanitizeUser(user);
+};
+
+export const verifyUserEmail = async (token: string) => {
+  const user = await verifyEmailToken(token);
+
+  return {
+    user: sanitizeUser(user),
+    message: "Email address verified successfully.",
+  };
+};
+
+export const resendUserVerificationEmail = async (email: string) => {
+  await resendEmailVerification(email);
+
+  return {
+    message: "If an unverified account exists for this email, a new verification link has been sent.",
+  };
 };
 
 export const requestPasswordReset = async (email: string): Promise<void> => {
   const normalizedEmail = email.trim().toLowerCase();
   const user = await prisma.user.findUnique({
     where: { email: normalizedEmail },
-    select: {
-      id: true,
-      email: true,
-      status: true
-    }
+    select: { id: true, email: true, status: true },
   });
 
   if (!user || user.status !== UserStatus.ACTIVE) {
@@ -137,47 +175,32 @@ export const requestPasswordReset = async (email: string): Promise<void> => {
 
   await prisma.$transaction([
     prisma.passwordResetToken.updateMany({
-      where: {
-        userId: user.id,
-        usedAt: null
-      },
-      data: { usedAt: now }
+      where: { userId: user.id, usedAt: null },
+      data: { usedAt: now },
     }),
     prisma.passwordResetToken.create({
-      data: {
-        userId: user.id,
-        tokenHash,
-        expiresAt
-      }
-    })
+      data: { userId: user.id, tokenHash, expiresAt },
+    }),
   ]);
 
-  const resetUrl = new URL(env.passwordResetUrl);
+  const resetUrl = new URL(`${env.frontendUrl}/reset-password`);
   resetUrl.searchParams.set("token", token);
 
   try {
-    await sendPasswordResetEmail({
-      to: user.email,
-      resetUrl: resetUrl.toString()
-    });
+    await sendPasswordResetEmail({ to: user.email, resetUrl: resetUrl.toString() });
   } catch (error) {
     console.error("Failed to send password reset email", error);
   }
 };
 
-export const resetPassword = async (
+export const resetPasswordService = async (
   token: string,
   password: string
 ): Promise<void> => {
   const tokenHash = hashResetToken(token);
   const resetToken = await prisma.passwordResetToken.findUnique({
     where: { tokenHash },
-    select: {
-      id: true,
-      userId: true,
-      expiresAt: true,
-      usedAt: true
-    }
+    select: { id: true, userId: true, expiresAt: true, usedAt: true },
   });
   const now = new Date();
 
@@ -193,12 +216,8 @@ export const resetPassword = async (
 
   await prisma.$transaction(async (transaction) => {
     const consumed = await transaction.passwordResetToken.updateMany({
-      where: {
-        id: resetToken.id,
-        usedAt: null,
-        expiresAt: { gt: now }
-      },
-      data: { usedAt: now }
+      where: { id: resetToken.id, usedAt: null, expiresAt: { gt: now } },
+      data: { usedAt: now },
     });
 
     if (consumed.count !== 1) {
@@ -207,15 +226,12 @@ export const resetPassword = async (
 
     await transaction.user.update({
       where: { id: resetToken.userId },
-      data: { passwordHash }
+      data: { passwordHash },
     });
 
     await transaction.passwordResetToken.updateMany({
-      where: {
-        userId: resetToken.userId,
-        usedAt: null
-      },
-      data: { usedAt: now }
+      where: { userId: resetToken.userId, usedAt: null },
+      data: { usedAt: now },
     });
   });
 };

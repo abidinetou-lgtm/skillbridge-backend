@@ -32,6 +32,39 @@ export const grantCredits = async (
   return users[0].credits;
 };
 
+export const grantCreditsWithActualAmount = async (
+  transaction: Prisma.TransactionClient,
+  userId: string,
+  amount: number
+): Promise<number> => {
+  validateCreditAmount(amount);
+
+  const users = await transaction.$queryRaw<Array<{ credits: number }>>(
+    Prisma.sql`
+      SELECT "credits"
+      FROM "User"
+      WHERE "id" = ${userId}
+      FOR UPDATE
+    `
+  );
+
+  if (!users[0]) {
+    throw new HttpError(404, "User not found");
+  }
+
+  const currentCredits = users[0].credits;
+  const nextCredits = Math.min(MAX_CREDITS, currentCredits + amount);
+
+  if (nextCredits !== currentCredits) {
+    await transaction.user.update({
+      where: { id: userId },
+      data: { credits: nextCredits },
+    });
+  }
+
+  return nextCredits - currentCredits;
+};
+
 export const spendCredits = async (
   transaction: Prisma.TransactionClient,
   userId: string,

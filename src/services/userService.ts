@@ -17,7 +17,7 @@ const learningGoalSelect = {
 
 const currentUserSelect = {
   id: true, email: true, firstName: true, lastName: true,
-  bio: true, avatarUrl: true, availability: true,
+  bio: true, avatarUrl: true, bannerUrl: true, availability: true,
   role: true, status: true, credits: true, averageRating: true, totalRatings: true,
   teachingSkills: { select: teachingSkillSelect, orderBy: { createdAt: "desc" } },
   learningGoals:  { where: { isActive: true }, select: learningGoalSelect, orderBy: { createdAt: "desc" } },
@@ -52,10 +52,11 @@ export const getPublicUserProfile = async (userId: string) => {
 export const updateUserProfile = async (userId: string, input: UpdateProfileInput) => {
   await ensureActiveUser(userId);
   const data: Prisma.UserUpdateInput = {};
-  if (input.firstName  !== undefined) data.firstName  = input.firstName;
-  if (input.lastName   !== undefined) data.lastName   = input.lastName;
-  if (input.bio        !== undefined) data.bio        = input.bio;
-  if (input.avatarUrl  !== undefined) data.avatarUrl  = input.avatarUrl;
+  if (input.firstName    !== undefined) data.firstName    = input.firstName;
+  if (input.lastName     !== undefined) data.lastName     = input.lastName;
+  if (input.bio          !== undefined) data.bio          = input.bio;
+  if (input.avatarUrl    !== undefined) data.avatarUrl    = input.avatarUrl;
+  if (input.bannerUrl    !== undefined) data.bannerUrl    = input.bannerUrl;
   if (input.availability !== undefined) data.availability = input.availability;
   const user = await prisma.user.update({ where: { id: userId }, data, select: currentUserSelect });
   return user;

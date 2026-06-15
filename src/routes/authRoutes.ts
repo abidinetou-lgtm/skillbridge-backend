@@ -4,7 +4,9 @@ import {
   login,
   me,
   register,
-  resetPassword
+  resendVerification,
+  resetPassword,
+  verifyEmail
 } from "../controllers/authController";
 import { authenticate } from "../middleware/authMiddleware";
 import { authRateLimiter } from "../middleware/authRateLimit";
@@ -20,8 +22,9 @@ router.post("/register", register);
 router.post("/login", login);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);
+router.get("/verify-email", verifyEmail);
+router.post("/resend-verification", resendVerification);
 
-// Protected route example: the JWT middleware must run before the controller.
 router.get("/me", authenticate, me);
 
 export default router;

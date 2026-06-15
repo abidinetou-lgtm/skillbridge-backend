@@ -15,10 +15,10 @@ export const listConversationsService = async (userId: string) => {
     },
     include: {
       firstUser: {
-        select: { id: true, firstName: true, lastName: true },
+        select: { id: true, firstName: true, lastName: true, avatarUrl: true },
       },
       secondUser: {
-        select: { id: true, firstName: true, lastName: true },
+        select: { id: true, firstName: true, lastName: true, avatarUrl: true },
       },
       messages: {
         orderBy: { createdAt: "desc" },

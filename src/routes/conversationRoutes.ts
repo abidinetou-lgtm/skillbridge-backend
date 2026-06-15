@@ -10,17 +10,12 @@ import {
 
 const router = Router();
 
-// List all conversations for the authenticated user
-router.get("/", authenticate, listConversationsController);
-
-// Get a single conversation's metadata (participants, status)
-router.get("/:id", authenticate, getConversationController);
-
-// List all messages in a conversation
-router.get("/:id/messages", authenticate, listMessagesController);
-
-// Post a new message in a conversation
+router.get("/",              authenticate, listConversationsController);
+router.get("/:id",           authenticate, getConversationController);
+router.get("/:id/messages",  authenticate, listMessagesController);
 router.post("/:id/messages", authenticate, createMessageController);
+router.patch("/:id/archive",   authenticate, archiveConversationController);
+router.patch("/:id/unarchive", authenticate, unarchiveConversationController);
 
 // Post a new file message in a conversation
 router.post("/:id/messages/file", authenticate, sendFileMessageController);
