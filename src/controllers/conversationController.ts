@@ -5,8 +5,7 @@ import {
   getConversationService,
   listMessagesService,
   createMessageService,
-  archiveConversationService,
-  unarchiveConversationService,
+  sendFileMessageService,
 } from "../services/conversationService";
 
 // GET /conversations
@@ -73,8 +72,8 @@ export const createMessageController = async (
   }
 };
 
-// PATCH /conversations/:id/archive
-export const archiveConversationController = async (
+// POST /conversations/:id/messages/file
+export const sendFileMessageController = async (
   req: Request,
   res: Response,
   next: NextFunction
@@ -82,24 +81,9 @@ export const archiveConversationController = async (
   try {
     const userId = getAuthenticatedUserId(req);
     const conversationId = req.params.id as string;
-    const data = await archiveConversationService(conversationId, userId);
-    res.status(200).json(data);
-  } catch (error) {
-    next(error);
-  }
-};
-
-// PATCH /conversations/:id/unarchive
-export const unarchiveConversationController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
-    const userId = getAuthenticatedUserId(req);
-    const conversationId = req.params.id as string;
-    const data = await unarchiveConversationService(conversationId, userId);
-    res.status(200).json(data);
+    const fileUrl = req.body.fileUrl as string;
+    const data = await sendFileMessageService(conversationId, userId, fileUrl);
+    res.status(201).json(data);
   } catch (error) {
     next(error);
   }

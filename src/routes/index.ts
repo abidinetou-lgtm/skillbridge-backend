@@ -6,11 +6,13 @@ import userRoutes from "./userRoutes";
 import sessionRoutes from "./sessionRoutes";
 import conversationRoutes from "./conversationRoutes";
 import creditRoutes from "./creditRoutes";
+import notificationRoutes from "./notificationRoutes";
 
 const router = Router();
 
 // Mount feature route files here. Example: router.use("/users", userRoutes);
 router.use("/", healthRoutes);
+router.use("/notifications", notificationRoutes);
 router.use("/auth", authRoutes);
 router.use("/users", userRoutes);
 router.use("/matches", matchRoutes);

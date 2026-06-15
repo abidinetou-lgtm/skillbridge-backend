@@ -3,9 +3,14 @@ import { HttpError } from "../utils/httpError";
 import { prisma } from "../utils/prisma";
 import { getAuthenticatedUserId } from "../utils/requestHelpers";
 import {
+  addParticipantSessionService,
+  createGroupSessionService,
   createSessionService,
   endSessionService,
+  getParticipantsSessionService,
   joinSessionService,
+  removeParticipantSessionService,
+
 } from "../services/sessionService";
 import { createSessionRating } from "../services/ratingService";
 
@@ -178,6 +183,99 @@ export const createSessionRatingController = async (
     });
 
     res.status(201).json({ rating: sessionRating });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createGroupSessionController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const teacherId = getAuthenticatedUserId(req);
+    const { learnerIds, title, estimatedDuration, scheduledAt } = req.body;
+
+    if (!learnerIds || !Array.isArray(learnerIds) || learnerIds.length === 0) {
+      throw new HttpError(400, "learnerIds is required and must be a non-empty array");
+    }
+    if (!title || typeof title !== "string") {
+      throw new HttpError(400, "title is required");
+    }
+    if (!estimatedDuration || typeof estimatedDuration !== "number") {
+      throw new HttpError(400, "estimatedDuration (number) is required");
+    }
+    if (!scheduledAt) {
+      throw new HttpError(400, "scheduledAt is required");
+    }
+    res.status(201).json({
+      session: await createGroupSessionService(
+        teacherId,
+        learnerIds,
+        title,
+        estimatedDuration,
+        new Date(scheduledAt as string)
+      )
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+export const addParticipantSessionController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const sessionId = req.params.id as string;
+    const requesterId = getAuthenticatedUserId(req);
+    const userId = req.body.userId as string;
+
+    if (!userId || typeof userId !== "string") {
+      throw new HttpError(400, "userId is required and must be a string");
+    }
+
+    // Logic to add participant goes here
+    const updatedSession = await addParticipantSessionService(sessionId, requesterId, userId);
+    res.status(200).json({ session: updatedSession });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const removeParticipantSessionController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const sessionId = req.params.id as string;
+    const requesterId = getAuthenticatedUserId(req);
+    const userId = req.params.userId as string;
+
+    if (!userId || typeof userId !== "string") {
+      throw new HttpError(400, "userId is required and must be a string");
+    }
+    // Logic to remove participant goes here
+    const updatedSession = await removeParticipantSessionService(sessionId, requesterId, userId);
+    res.status(200).json({ session: updatedSession });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getParticipantsSessionController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const sessionId = req.params.id as string;
+    const requesterId = getAuthenticatedUserId(req);
+
+    const participants = await getParticipantsSessionService(sessionId, requesterId);
+    res.status(200).json({ participants });
   } catch (error) {
     next(error);
   }
