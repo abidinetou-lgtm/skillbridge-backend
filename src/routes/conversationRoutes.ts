@@ -5,6 +5,7 @@ import {
   getConversationController,
   listMessagesController,
   createMessageController,
+  sendFileMessageController,
 } from "../controllers/conversationController";
 
 const router = Router();
@@ -20,5 +21,8 @@ router.get("/:id/messages", authenticate, listMessagesController);
 
 // Post a new message in a conversation
 router.post("/:id/messages", authenticate, createMessageController);
+
+// Post a new file message in a conversation
+router.post("/:id/messages/file", authenticate, sendFileMessageController);
 
 export default router;

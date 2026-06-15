@@ -140,3 +140,37 @@ export const createMessageService = async (
     },
   });
 };
+
+export const sendFileMessageService = async (
+  conversationId: string,
+  userId: string,
+  fileUrl: string
+) => {
+  const conversation = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+  });
+
+  if (!conversation) throw new HttpError(404, "Conversation not found");
+  if (
+    conversation.firstUserId !== userId &&
+    conversation.secondUserId !== userId
+  ) {
+    throw new HttpError(403, "Forbidden");
+  }
+  if (!fileUrl) {
+    throw new HttpError(400, "File URL cannot be empty");
+  }
+
+  return prisma.message.create({
+    data: {
+      conversationId,
+      senderId: userId,
+      body: fileUrl,
+      fileUrl: fileUrl.trim(),
+      type: "FILE",
+    },
+    include: {
+      sender: { select: { id: true, firstName: true, lastName: true } },
+    },
+  });
+};
