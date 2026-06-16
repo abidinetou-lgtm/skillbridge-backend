@@ -63,9 +63,11 @@ model User {
   avatarUrl    String?
   bannerUrl    String?
   availability String?    // JSON: { "Lundi_Matin": true, "Mardi_Soir": true, ... }
-  role         Role       @default(USER)
-  status       UserStatus @default(ACTIVE)
-  isEmailVerified Boolean @default(false)
+  role             Role       @default(USER)
+  status           UserStatus @default(ACTIVE)
+  isEmailVerified  Boolean    @default(false)
+  sessionParticipations  SessionParticipant[]
+  notifications Notification[]
 
   credits Int @default(120)
   averageRating Float @default(0)
@@ -96,7 +98,6 @@ model User {
 
   @@index([role])
   @@index([status])
-  @@index([isEmailVerified])
   @@index([createdAt])
 }
 
@@ -237,6 +238,8 @@ model Message {
   status         MessageStatus @default(SENT)
   readAt         DateTime?
   isSystem       Boolean       @default(false)
+  type           MessageType @default(TEXT)
+  fileUrl        String?
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
@@ -247,6 +250,12 @@ model Message {
   @@index([conversationId, createdAt])
   @@index([senderId])
   @@index([status])
+}
+
+enum MessageType {
+  TEXT
+  FILE 
+  SYSTEM 
 }
 
 model RewardTransaction {
@@ -287,6 +296,7 @@ model TeachingSession {
   creditsReserved  Int                   @default(0)
   creditsConsumed  Int                   @default(0)
   notes            String?
+  participants     SessionParticipant[]
 
   match   Match?  @relation(fields: [matchId], references: [id], onDelete: SetNull)
   teacher User    @relation("SessionTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
@@ -322,4 +332,48 @@ model SessionRating {
   @@index([reviewedUserId, createdAt])
   @@index([reviewerId])
   @@index([sessionId])
+}
+
+model SessionParticipant {
+  id        String                 @id @default(uuid())
+  sessionId String
+  userId    String
+  role      SessionParticipantRole
+
+  session   TeachingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([sessionId, userId])
+  @@index([sessionId])
+  @@index([userId])
+}
+
+enum SessionParticipantRole {
+  TEACHER
+  LEARNER
+}
+
+model Notification {
+  id        String @id @default(uuid())
+  userId    String 
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type      NotificationType 
+  message   String
+  
+  read Boolean @default(false)
+
+  createdAt DateTime @default(now())
+}
+
+enum NotificationType {
+  SESSION_BOOKED
+  SESSION_ACCEPTED
+  SESSION_REMINDER
+  CONNECTION_REQUEST
+  CONNECTION_ACCEPTED
+  MESSAGE_RECEIVED
 }

@@ -1,6 +1,7 @@
 import { MatchStatus, Prisma, UserStatus } from "@prisma/client";
 import { HttpError } from "../utils/httpError";
 import { prisma } from "../utils/prisma";
+import { createNotificationService } from "./notificationsService";
 
 const skillSelect = {
   id: true,
@@ -225,7 +226,7 @@ export const requestMatch = async (input: {
     throw new HttpError(409, "Match request already exists");
   }
 
-  return prisma.match.create({
+  const match = await prisma.match.create({
     data: {
       requesterId: input.requesterId,
       receiverId,
@@ -234,6 +235,15 @@ export const requestMatch = async (input: {
     },
     select: matchSelect
   });
+
+  // Notifier le destinataire d'une nouvelle demande de connexion
+  createNotificationService(
+    receiverId,
+    "CONNECTION_REQUEST",
+    `${match.requester.firstName} ${match.requester.lastName} veut se connecter avec vous.`
+  ).catch(() => {});
+
+  return match;
 };
 
 export const getMyMatches = async (userId: string) => {
@@ -311,10 +321,21 @@ export const updateMatchStatus = async (
         }
       });
 
-      return tx.match.findUnique({
+      const acceptedMatch = await tx.match.findUnique({
         where: { id: matchId },
         select: matchSelect
       });
+
+      // Notifier le demandeur que sa demande a été acceptée
+      if (acceptedMatch) {
+        createNotificationService(
+          match.requesterId,
+          "CONNECTION_ACCEPTED",
+          `${acceptedMatch.receiver.firstName} ${acceptedMatch.receiver.lastName} a accepté votre demande de connexion.`
+        ).catch(() => {});
+      }
+
+      return acceptedMatch;
     }
 
     return updated;

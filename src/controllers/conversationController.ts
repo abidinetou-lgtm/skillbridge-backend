@@ -5,6 +5,7 @@ import {
   getConversationService,
   listMessagesService,
   createMessageService,
+  sendFileMessageService,
   archiveConversationService,
   unarchiveConversationService,
 } from "../services/conversationService";
@@ -67,6 +68,23 @@ export const createMessageController = async (
     const conversationId = req.params.id as string;
     const body = req.body.body as string;
     const data = await createMessageService(conversationId, userId, body);
+    res.status(201).json(data);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// POST /conversations/:id/messages/file
+export const sendFileMessageController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const userId = getAuthenticatedUserId(req);
+    const conversationId = req.params.id as string;
+    const fileUrl = req.body.fileUrl as string;
+    const data = await sendFileMessageService(conversationId, userId, fileUrl);
     res.status(201).json(data);
   } catch (error) {
     next(error);

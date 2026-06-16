@@ -5,6 +5,7 @@ import {
   getConversationController,
   listMessagesController,
   createMessageController,
+  sendFileMessageController,
   archiveConversationController,
   unarchiveConversationController,
 } from "../controllers/conversationController";
@@ -17,5 +18,8 @@ router.get("/:id/messages",  authenticate, listMessagesController);
 router.post("/:id/messages", authenticate, createMessageController);
 router.patch("/:id/archive",   authenticate, archiveConversationController);
 router.patch("/:id/unarchive", authenticate, unarchiveConversationController);
+
+// Post a new file message in a conversation
+router.post("/:id/messages/file", authenticate, sendFileMessageController);
 
 export default router;
