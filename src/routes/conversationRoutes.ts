@@ -6,6 +6,8 @@ import {
   listMessagesController,
   createMessageController,
   sendFileMessageController,
+  archiveConversationController,
+  unarchiveConversationController,
 } from "../controllers/conversationController";
 
 const router = Router();

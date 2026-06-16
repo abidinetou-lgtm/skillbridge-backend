@@ -63,9 +63,10 @@ model User {
   avatarUrl    String?
   bannerUrl    String?
   availability String?    // JSON: { "Lundi_Matin": true, "Mardi_Soir": true, ... }
-  role         Role       @default(USER)
-  status       UserStatus @default(ACTIVE)
-  sessionParticipations  SessionParticipant[] 
+  role             Role       @default(USER)
+  status           UserStatus @default(ACTIVE)
+  isEmailVerified  Boolean    @default(false)
+  sessionParticipations  SessionParticipant[]
   notifications Notification[]
 
   credits Int @default(120)
@@ -97,7 +98,6 @@ model User {
 
   @@index([role])
   @@index([status])
-  @@index([isEmailVerified])
   @@index([createdAt])
 }
 
@@ -373,4 +373,7 @@ enum NotificationType {
   SESSION_BOOKED
   SESSION_ACCEPTED
   SESSION_REMINDER
+  CONNECTION_REQUEST
+  CONNECTION_ACCEPTED
+  MESSAGE_RECEIVED
 }

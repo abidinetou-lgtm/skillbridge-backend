@@ -48,7 +48,7 @@ export const markNotificationAsReadController = async (
     next: NextFunction
 ) => {
     try {
-        const { id } = req.params;
+        const id = req.params.id as string;
         const userID = getAuthenticatedUserId(req);
         const notification = await markNotificationAsReadService(id, userID);
         res.status(200).json(notification);

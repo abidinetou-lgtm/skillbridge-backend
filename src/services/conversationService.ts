@@ -1,5 +1,6 @@
 import { prisma } from "../utils/prisma";
 import { HttpError } from "../utils/httpError";
+import { createNotificationService } from "./notificationsService";
 
 /**
  * Returns all conversations the user participates in, with the last message
@@ -129,7 +130,7 @@ export const createMessageService = async (
     throw new HttpError(400, "Message body cannot be empty");
   }
 
-  return prisma.message.create({
+  const message = await prisma.message.create({
     data: {
       conversationId,
       senderId: userId,
@@ -138,6 +139,53 @@ export const createMessageService = async (
     include: {
       sender: { select: { id: true, firstName: true, lastName: true } },
     },
+  });
+
+  // Notifier l'autre participant
+  const recipientId =
+    conversation.firstUserId === userId
+      ? conversation.secondUserId
+      : conversation.firstUserId;
+  createNotificationService(
+    recipientId,
+    "MESSAGE_RECEIVED",
+    `Nouveau message de ${message.sender.firstName} ${message.sender.lastName}.`
+  ).catch(() => {});
+
+  return message;
+};
+
+export const archiveConversationService = async (
+  conversationId: string,
+  userId: string
+) => {
+  const conversation = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+  });
+  if (!conversation) throw new HttpError(404, "Conversation not found");
+  if (conversation.firstUserId !== userId && conversation.secondUserId !== userId) {
+    throw new HttpError(403, "Forbidden");
+  }
+  return prisma.conversation.update({
+    where: { id: conversationId },
+    data: { status: "ARCHIVED" },
+  });
+};
+
+export const unarchiveConversationService = async (
+  conversationId: string,
+  userId: string
+) => {
+  const conversation = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+  });
+  if (!conversation) throw new HttpError(404, "Conversation not found");
+  if (conversation.firstUserId !== userId && conversation.secondUserId !== userId) {
+    throw new HttpError(403, "Forbidden");
+  }
+  return prisma.conversation.update({
+    where: { id: conversationId },
+    data: { status: "ACTIVE" },
   });
 };
 

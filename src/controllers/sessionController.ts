@@ -125,8 +125,8 @@ export const endSessionController = async (
       throw new HttpError(400, "durationSeconds (safe non-negative integer) is required");
     }
 
-    await endSessionService(sessionId, userId, durationSeconds);
-    res.status(200).json({ message: "Session ended successfully" });
+    const result = await endSessionService(sessionId, userId, durationSeconds);
+    res.status(200).json({ message: "Session ended successfully", ...result });
   } catch (error) {
     next(error);
   }

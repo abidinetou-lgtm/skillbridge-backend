@@ -6,6 +6,8 @@ import {
   listMessagesService,
   createMessageService,
   sendFileMessageService,
+  archiveConversationService,
+  unarchiveConversationService,
 } from "../services/conversationService";
 
 // GET /conversations
@@ -84,6 +86,38 @@ export const sendFileMessageController = async (
     const fileUrl = req.body.fileUrl as string;
     const data = await sendFileMessageService(conversationId, userId, fileUrl);
     res.status(201).json(data);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// PATCH /conversations/:id/archive
+export const archiveConversationController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const userId = getAuthenticatedUserId(req);
+    const conversationId = req.params.id as string;
+    const data = await archiveConversationService(conversationId, userId);
+    res.status(200).json(data);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// PATCH /conversations/:id/unarchive
+export const unarchiveConversationController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const userId = getAuthenticatedUserId(req);
+    const conversationId = req.params.id as string;
+    const data = await unarchiveConversationService(conversationId, userId);
+    res.status(200).json(data);
   } catch (error) {
     next(error);
   }
