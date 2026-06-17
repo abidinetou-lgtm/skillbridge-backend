@@ -10,7 +10,9 @@ import {
   getParticipantsSessionService,
   joinSessionService,
   removeParticipantSessionService,
-
+  acceptSessionService,
+  refuseSessionService,
+  updateSessionService,
 } from "../services/sessionService";
 import { createSessionRating } from "../services/ratingService";
 
@@ -183,6 +185,67 @@ export const createSessionRatingController = async (
     });
 
     res.status(201).json({ rating: sessionRating });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// POST /sessions/:id/accept
+export const acceptSessionController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const sessionId = req.params.id as string;
+    const learnerId = getAuthenticatedUserId(req);
+    const session = await acceptSessionService(sessionId, learnerId);
+    res.status(200).json({ session });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// POST /sessions/:id/refuse
+export const refuseSessionController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const sessionId = req.params.id as string;
+    const learnerId = getAuthenticatedUserId(req);
+    const session = await refuseSessionService(sessionId, learnerId);
+    res.status(200).json({ session });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// PATCH /sessions/:id
+export const updateSessionController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const sessionId = req.params.id as string;
+    const teacherId = getAuthenticatedUserId(req);
+    const { estimatedDuration, scheduledAt, title } = req.body;
+
+    if (
+      estimatedDuration !== undefined &&
+      (!Number.isInteger(estimatedDuration) || estimatedDuration <= 0)
+    ) {
+      throw new HttpError(400, "estimatedDuration must be a positive integer");
+    }
+
+    const session = await updateSessionService(sessionId, teacherId, {
+      estimatedDuration,
+      scheduledAt,
+      title,
+    });
+    res.status(200).json({ session });
   } catch (error) {
     next(error);
   }

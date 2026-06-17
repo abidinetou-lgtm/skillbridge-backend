@@ -11,6 +11,9 @@ import {
   getParticipantsSessionController,
   getSessionsController,
   getSessionController,
+  acceptSessionController,
+  refuseSessionController,
+  updateSessionController,
 } from "../controllers/sessionController";
 
 const router = Router();
@@ -19,8 +22,11 @@ router.get("/mine",        authenticate, getSessionsController);
 router.post("/",           authenticate, createSessionController);
 router.post("/group",      authenticate, createGroupSessionController); // ← avant /:id
 router.get("/:id",         authenticate, getSessionController);
+router.patch("/:id",       authenticate, updateSessionController);
 router.post("/:id/end",    authenticate, endSessionController);
 router.post("/:id/join",   authenticate, joinSessionController);
+router.post("/:id/accept", authenticate, acceptSessionController);
+router.post("/:id/refuse", authenticate, refuseSessionController);
 router.post("/:id/rating", authenticate, createSessionRatingController);
 router.post("/:id/participants", authenticate, addParticipantSessionController);
 router.delete("/:id/participants/:userId", authenticate, removeParticipantSessionController);
