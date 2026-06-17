@@ -8,6 +8,7 @@ import {
   sendFileMessageController,
   archiveConversationController,
   unarchiveConversationController,
+  deleteConversationController,
 } from "../controllers/conversationController";
 
 const router = Router();
@@ -18,6 +19,7 @@ router.get("/:id/messages",  authenticate, listMessagesController);
 router.post("/:id/messages", authenticate, createMessageController);
 router.patch("/:id/archive",   authenticate, archiveConversationController);
 router.patch("/:id/unarchive", authenticate, unarchiveConversationController);
+router.delete("/:id",          authenticate, deleteConversationController);
 
 // Post a new file message in a conversation
 router.post("/:id/messages/file", authenticate, sendFileMessageController);

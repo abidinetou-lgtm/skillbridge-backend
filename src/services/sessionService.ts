@@ -2,6 +2,7 @@ import { v4 as uuid } from "uuid";
 import { prisma } from "../utils/prisma";
 import { HttpError } from "../utils/httpError";
 import { createNotificationService } from "./notificationsService";
+import { spendCredits, grantCreditsWithActualAmount } from "./creditService";
 
 export const createSessionService = async (
   teacherId: string,
@@ -12,20 +13,14 @@ export const createSessionService = async (
 ) => {
   const learner = await prisma.user.findUnique({
     where: { id: learnerId },
-    select: { credits: true },
+    select: { id: true },
   });
   if (!learner) throw new HttpError(404, "Learner not found");
-  if (learner.credits < estimatedDuration) {
-    throw new HttpError(400, "Learner does not have enough credits");
-  }
 
   const jitsiRoomId = `skillbridge-${uuid()}`;
-  const [, session] = await prisma.$transaction([
-    prisma.user.update({
-      where: { id: learnerId },
-      data: { credits: { decrement: estimatedDuration } },
-    }),
-    prisma.teachingSession.create({
+  const session = await prisma.$transaction(async (tx) => {
+    await spendCredits(tx, learnerId, estimatedDuration);
+    return tx.teachingSession.create({
       data: {
         jitsiRoomId,
         teacherId,
@@ -33,14 +28,15 @@ export const createSessionService = async (
         title,
         creditsReserved: estimatedDuration,
         startsAt: scheduledAt,
+        status: "PENDING_CONFIRMATION",
       },
-    }),
-  ]);
+    });
+  });
 
   createNotificationService(
-    teacherId,
+    learnerId,
     "SESSION_BOOKED",
-    `Une session "${title}" vient d'être créée.`
+    `Proposition de session "${title}" reçue. ${estimatedDuration} crédits réservés. Acceptez ou refusez.`
   ).catch(() => {});
 
   return session;
@@ -120,6 +116,9 @@ export const joinSessionService = async (
   if (session.status === "COMPLETED" || session.status === "CANCELLED") {
     throw new HttpError(400, "Session has already ended");
   }
+  if (session.status === "PENDING_CONFIRMATION") {
+    throw new HttpError(400, "Session is awaiting learner confirmation");
+  }
   if (session.status === "SCHEDULED") {
     await prisma.teachingSession.update({
       where: { id: sessionId },
@@ -127,6 +126,83 @@ export const joinSessionService = async (
     });
   }
   return session.jitsiRoomId;
+};
+
+export const acceptSessionService = async (
+  sessionId: string,
+  learnerId: string
+) => {
+  const session = await prisma.teachingSession.findUnique({
+    where: { id: sessionId },
+    select: { teacherId: true, learnerId: true, status: true, title: true },
+  });
+  if (!session) throw new HttpError(404, "Session not found");
+  if (session.learnerId !== learnerId) {
+    throw new HttpError(403, "Only the learner can accept this session");
+  }
+  if (session.status !== "PENDING_CONFIRMATION") {
+    throw new HttpError(400, "Session is not pending confirmation");
+  }
+
+  const updated = await prisma.teachingSession.update({
+    where: { id: sessionId },
+    data: { status: "SCHEDULED" },
+  });
+
+  createNotificationService(
+    session.teacherId,
+    "SESSION_ACCEPTED",
+    `Votre session "${session.title}" a été acceptée.`
+  ).catch(() => {});
+
+  return updated;
+};
+
+export const refuseSessionService = async (
+  sessionId: string,
+  learnerId: string
+) => {
+  const session = await prisma.teachingSession.findUnique({
+    where: { id: sessionId },
+    select: {
+      teacherId: true,
+      learnerId: true,
+      status: true,
+      title: true,
+      creditsReserved: true,
+    },
+  });
+  if (!session) throw new HttpError(404, "Session not found");
+  if (session.learnerId !== learnerId) {
+    throw new HttpError(403, "Only the learner can refuse this session");
+  }
+  if (session.status !== "PENDING_CONFIRMATION") {
+    throw new HttpError(400, "Session is not pending confirmation");
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    await grantCreditsWithActualAmount(tx, learnerId, session.creditsReserved);
+    await tx.rewardTransaction.create({
+      data: {
+        userId: learnerId,
+        amount: session.creditsReserved,
+        type: "REFUNDED",
+        description: `Remboursement session refusée : "${session.title}"`,
+      },
+    });
+    return tx.teachingSession.update({
+      where: { id: sessionId },
+      data: { status: "CANCELLED" },
+    });
+  });
+
+  createNotificationService(
+    session.teacherId,
+    "SESSION_REFUSED",
+    `Votre session "${session.title}" a été refusée par l'apprenant.`
+  ).catch(() => {});
+
+  return updated;
 };
 
 export const createGroupSessionService = async (
@@ -180,6 +256,94 @@ export const createGroupSessionService = async (
 
     return session;
   });
+};
+
+export const updateSessionService = async (
+  sessionId: string,
+  teacherId: string,
+  body: { estimatedDuration?: number; scheduledAt?: string; title?: string }
+) => {
+  const session = await prisma.teachingSession.findUnique({
+    where: { id: sessionId },
+    select: {
+      teacherId: true,
+      learnerId: true,
+      status: true,
+      title: true,
+      creditsReserved: true,
+    },
+  });
+  if (!session) throw new HttpError(404, "Session not found");
+  if (session.teacherId !== teacherId) {
+    throw new HttpError(403, "Only the teacher can modify this session");
+  }
+  if (session.status !== "CANCELLED" && session.status !== "PENDING_CONFIRMATION") {
+    throw new HttpError(400, "Only cancelled or pending sessions can be modified");
+  }
+
+  const newCredits =
+    body.estimatedDuration !== undefined
+      ? body.estimatedDuration
+      : session.creditsReserved;
+
+  const updated = await prisma.$transaction(async (tx) => {
+    if (session.status === "CANCELLED") {
+      // Crédits déjà remboursés à l'apprenant — déduire le nouveau montant complet
+      await spendCredits(tx, session.learnerId, newCredits);
+      if (newCredits > 0) {
+        await tx.rewardTransaction.create({
+          data: {
+            userId: session.learnerId,
+            amount: newCredits,
+            type: "SPENT",
+            description: `Réservation session re-proposée : "${body.title ?? session.title}"`,
+          },
+        });
+      }
+    } else {
+      // PENDING_CONFIRMATION : crédits encore réservés, ajuster le delta
+      const delta = newCredits - session.creditsReserved;
+      if (delta > 0) {
+        await spendCredits(tx, session.learnerId, delta);
+        await tx.rewardTransaction.create({
+          data: {
+            userId: session.learnerId,
+            amount: delta,
+            type: "SPENT",
+            description: `Ajustement session modifiée : "${body.title ?? session.title}"`,
+          },
+        });
+      } else if (delta < 0) {
+        await grantCreditsWithActualAmount(tx, session.learnerId, -delta);
+        await tx.rewardTransaction.create({
+          data: {
+            userId: session.learnerId,
+            amount: -delta,
+            type: "REFUNDED",
+            description: `Remboursement partiel session modifiée : "${body.title ?? session.title}"`,
+          },
+        });
+      }
+    }
+
+    return tx.teachingSession.update({
+      where: { id: sessionId },
+      data: {
+        creditsReserved: newCredits,
+        status: "PENDING_CONFIRMATION",
+        ...(body.scheduledAt ? { startsAt: new Date(body.scheduledAt) } : {}),
+        ...(body.title ? { title: body.title } : {}),
+      },
+    });
+  });
+
+  createNotificationService(
+    session.learnerId,
+    "SESSION_BOOKED",
+    `La session "${updated.title}" a été modifiée. ${updated.creditsReserved} crédits réservés. Confirmez ou refusez.`
+  ).catch(() => {});
+
+  return updated;
 };
 
 export const addParticipantSessionService = async (

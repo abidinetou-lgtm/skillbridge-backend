@@ -8,6 +8,7 @@ import {
   sendFileMessageService,
   archiveConversationService,
   unarchiveConversationService,
+  deleteConversationService,
 } from "../services/conversationService";
 
 // GET /conversations
@@ -86,6 +87,22 @@ export const sendFileMessageController = async (
     const fileUrl = req.body.fileUrl as string;
     const data = await sendFileMessageService(conversationId, userId, fileUrl);
     res.status(201).json(data);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// DELETE /conversations/:id
+export const deleteConversationController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const userId = getAuthenticatedUserId(req);
+    const conversationId = req.params.id as string;
+    await deleteConversationService(conversationId, userId);
+    res.status(204).send();
   } catch (error) {
     next(error);
   }

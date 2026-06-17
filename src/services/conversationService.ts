@@ -189,6 +189,20 @@ export const unarchiveConversationService = async (
   });
 };
 
+export const deleteConversationService = async (
+  conversationId: string,
+  userId: string
+) => {
+  const conversation = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+  });
+  if (!conversation) throw new HttpError(404, "Conversation not found");
+  if (conversation.firstUserId !== userId && conversation.secondUserId !== userId) {
+    throw new HttpError(403, "Forbidden");
+  }
+  await prisma.conversation.delete({ where: { id: conversationId } });
+};
+
 export const sendFileMessageService = async (
   conversationId: string,
   userId: string,
