@@ -2,7 +2,7 @@ import { v4 as uuid } from "uuid";
 import { prisma } from "../utils/prisma";
 import { HttpError } from "../utils/httpError";
 import { createNotificationService } from "./notificationsService";
-import { spendCredits, grantCreditsWithActualAmount } from "./creditService";
+import { spendCredits } from "./creditService";
 
 export const createSessionService = async (
   teacherId: string,
@@ -18,25 +18,22 @@ export const createSessionService = async (
   if (!learner) throw new HttpError(404, "Learner not found");
 
   const jitsiRoomId = `skillbridge-${uuid()}`;
-  const session = await prisma.$transaction(async (tx) => {
-    await spendCredits(tx, learnerId, estimatedDuration);
-    return tx.teachingSession.create({
-      data: {
-        jitsiRoomId,
-        teacherId,
-        learnerId,
-        title,
-        creditsReserved: estimatedDuration,
-        startsAt: scheduledAt,
-        status: "PENDING_CONFIRMATION",
-      },
-    });
+  const session = await prisma.teachingSession.create({
+    data: {
+      jitsiRoomId,
+      teacherId,
+      learnerId,
+      title,
+      creditsReserved: estimatedDuration,
+      startsAt: scheduledAt,
+      status: "PENDING_CONFIRMATION",
+    },
   });
 
   createNotificationService(
     learnerId,
     "SESSION_BOOKED",
-    `Proposition de session "${title}" reçue. ${estimatedDuration} crédits réservés. Acceptez ou refusez.`
+    `Proposition de session "${title}" reçue. ${estimatedDuration} crédits requis pour accepter. Acceptez ou refusez.`
   ).catch(() => {});
 
   return session;
@@ -134,7 +131,7 @@ export const acceptSessionService = async (
 ) => {
   const session = await prisma.teachingSession.findUnique({
     where: { id: sessionId },
-    select: { teacherId: true, learnerId: true, status: true, title: true },
+    select: { teacherId: true, learnerId: true, status: true, title: true, creditsReserved: true },
   });
   if (!session) throw new HttpError(404, "Session not found");
   if (session.learnerId !== learnerId) {
@@ -144,9 +141,21 @@ export const acceptSessionService = async (
     throw new HttpError(400, "Session is not pending confirmation");
   }
 
-  const updated = await prisma.teachingSession.update({
-    where: { id: sessionId },
-    data: { status: "SCHEDULED" },
+  // spendCredits throws 400 "User does not have enough credits" if insufficient
+  const updated = await prisma.$transaction(async (tx) => {
+    await spendCredits(tx, learnerId, session.creditsReserved);
+    await tx.rewardTransaction.create({
+      data: {
+        userId: learnerId,
+        amount: session.creditsReserved,
+        type: "SPENT",
+        description: `Réservation session acceptée : "${session.title}"`,
+      },
+    });
+    return tx.teachingSession.update({
+      where: { id: sessionId },
+      data: { status: "SCHEDULED" },
+    });
   });
 
   createNotificationService(
@@ -169,7 +178,6 @@ export const refuseSessionService = async (
       learnerId: true,
       status: true,
       title: true,
-      creditsReserved: true,
     },
   });
   if (!session) throw new HttpError(404, "Session not found");
@@ -180,20 +188,10 @@ export const refuseSessionService = async (
     throw new HttpError(400, "Session is not pending confirmation");
   }
 
-  const updated = await prisma.$transaction(async (tx) => {
-    await grantCreditsWithActualAmount(tx, learnerId, session.creditsReserved);
-    await tx.rewardTransaction.create({
-      data: {
-        userId: learnerId,
-        amount: session.creditsReserved,
-        type: "REFUNDED",
-        description: `Remboursement session refusée : "${session.title}"`,
-      },
-    });
-    return tx.teachingSession.update({
-      where: { id: sessionId },
-      data: { status: "CANCELLED" },
-    });
+  // No credits were debited at creation, so nothing to refund here.
+  const updated = await prisma.teachingSession.update({
+    where: { id: sessionId },
+    data: { status: "CANCELLED" },
   });
 
   createNotificationService(
@@ -286,61 +284,22 @@ export const updateSessionService = async (
       ? body.estimatedDuration
       : session.creditsReserved;
 
-  const updated = await prisma.$transaction(async (tx) => {
-    if (session.status === "CANCELLED") {
-      // Crédits déjà remboursés à l'apprenant — déduire le nouveau montant complet
-      await spendCredits(tx, session.learnerId, newCredits);
-      if (newCredits > 0) {
-        await tx.rewardTransaction.create({
-          data: {
-            userId: session.learnerId,
-            amount: newCredits,
-            type: "SPENT",
-            description: `Réservation session re-proposée : "${body.title ?? session.title}"`,
-          },
-        });
-      }
-    } else {
-      // PENDING_CONFIRMATION : crédits encore réservés, ajuster le delta
-      const delta = newCredits - session.creditsReserved;
-      if (delta > 0) {
-        await spendCredits(tx, session.learnerId, delta);
-        await tx.rewardTransaction.create({
-          data: {
-            userId: session.learnerId,
-            amount: delta,
-            type: "SPENT",
-            description: `Ajustement session modifiée : "${body.title ?? session.title}"`,
-          },
-        });
-      } else if (delta < 0) {
-        await grantCreditsWithActualAmount(tx, session.learnerId, -delta);
-        await tx.rewardTransaction.create({
-          data: {
-            userId: session.learnerId,
-            amount: -delta,
-            type: "REFUNDED",
-            description: `Remboursement partiel session modifiée : "${body.title ?? session.title}"`,
-          },
-        });
-      }
-    }
-
-    return tx.teachingSession.update({
-      where: { id: sessionId },
-      data: {
-        creditsReserved: newCredits,
-        status: "PENDING_CONFIRMATION",
-        ...(body.scheduledAt ? { startsAt: new Date(body.scheduledAt) } : {}),
-        ...(body.title ? { title: body.title } : {}),
-      },
-    });
+  // Credits are only debited at acceptance, not at creation/modification.
+  // No credit movement needed here for PENDING or CANCELLED sessions.
+  const updated = await prisma.teachingSession.update({
+    where: { id: sessionId },
+    data: {
+      creditsReserved: newCredits,
+      status: "PENDING_CONFIRMATION",
+      ...(body.scheduledAt ? { startsAt: new Date(body.scheduledAt) } : {}),
+      ...(body.title ? { title: body.title } : {}),
+    },
   });
 
   createNotificationService(
     session.learnerId,
     "SESSION_BOOKED",
-    `La session "${updated.title}" a été modifiée. ${updated.creditsReserved} crédits réservés. Confirmez ou refusez.`
+    `La session "${updated.title}" a été modifiée. ${updated.creditsReserved} crédits requis pour accepter. Confirmez ou refusez.`
   ).catch(() => {});
 
   return updated;
